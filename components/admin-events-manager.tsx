@@ -95,6 +95,11 @@ export function EventsManager() {
         <h2 className="font-display text-lg text-gold">
           {editing ? "Edit event" : "New event"}
         </h2>
+        <p className="mt-1 text-xs text-mist">
+          Use <strong className="text-foreground/90">IST (India)</strong> for the calendar date and
+          clock time—the same as in-game. The public schedule converts to each player&rsquo;s local
+          time.
+        </p>
         <form onSubmit={save} className="mt-4 space-y-3">
           <input
             required
