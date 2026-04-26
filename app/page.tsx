@@ -1,101 +1,82 @@
-import Image from "next/image";
+import { WuxiaShell } from "@/components/wuxia-shell";
+import { HomeHero } from "@/components/home-hero";
+import { Card } from "@/components/ui-card";
 
-export default function Home() {
+function ProsperityBadge() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 font-display text-sm text-gold-bright">
+      <span
+        className="inline-block h-2 w-2 animate-pulse rounded-full bg-gold"
+        aria-hidden
+      />
+      2 Million Prosperity
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <WuxiaShell>
+      <div className="space-y-10">
+        <HomeHero />
+        <div className="flex flex-col items-center gap-3 text-center animate-fade-in">
+          <ProsperityBadge />
+          <p className="text-sm text-mist">Guild hall milestone</p>
+        </div>
+        <Card>
+          <h2 className="font-display text-xl text-gold-bright">Who we are</h2>
+          <p className="mt-3 leading-relaxed text-mist">
+            HighHeavenSect is a <strong className="text-foreground">casual</strong>{" "}
+            <strong className="text-foreground">SEA</strong> English guild. We
+            value chill runs, clear comms, and good company on the long road. No
+            elitist drama, just cultivators who show up, help each other, and
+            enjoy the jianghu together.
+          </p>
+        </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              t: "Schedule",
+              d: "Standing rhythm + officer-posted community events with countdowns.",
+              h: "/schedule",
+            },
+            {
+              t: "Quizzes",
+              d: "See open times, join codes, and when each room closes. Your local time zone.",
+              h: "/quizzes",
+            },
+            {
+              t: "Giveaways",
+              d: "Rewards, entry count, and announced winners (everyone can read).",
+              h: "/giveaways",
+            },
+            {
+              t: "Members",
+              d: "Meet the names behind the tag.",
+              h: "/members",
+            },
+            {
+              t: "Leadership",
+              d: "Sect head, officers, and elders of the order.",
+              h: "/leadership",
+            },
+            {
+              t: "Gallery",
+              d: "Group and hall shots from the jianghu.",
+              h: "/gallery",
+            },
+          ].map((x, i) => (
+            <Card key={x.t} delay={0.05 * i}>
+              <a href={x.h} className="group block">
+                <h3 className="font-display text-lg text-gold transition group-hover:text-gold-bright">
+                  {x.t} →
+                </h3>
+                <p className="mt-2 text-sm text-mist">{x.d}</p>
+              </a>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </WuxiaShell>
   );
 }
