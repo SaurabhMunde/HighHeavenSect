@@ -47,16 +47,16 @@ export function SiteHeader() {
           </div>
         </div>
 
-        <details className="relative shrink-0 md:hidden">
-          <summary className="list-none cursor-pointer rounded-md border border-gold/20 bg-card/50 px-3 py-1.5 text-sm text-foreground">
+        <details className="relative z-[70] isolate shrink-0 md:hidden">
+          <summary className="list-none cursor-pointer rounded-md border border-gold/25 bg-card px-3 py-1.5 text-sm text-foreground shadow-sm">
             Menu
           </summary>
-          <div className="absolute right-0 z-[60] mt-2 w-52 max-h-[min(80vh,28rem)] overflow-y-auto rounded-lg border border-gold/20 bg-void/95 py-1 shadow-card backdrop-blur-sm">
+          <div className="absolute right-0 z-[60] mt-2 w-52 max-h-[min(80vh,28rem)] overflow-y-auto rounded-lg border border-gold/30 bg-card py-1 shadow-2xl ring-1 ring-gold/20">
             {allNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="block px-3 py-2 text-sm text-mist hover:bg-white/5 hover:text-foreground"
+                className="block px-3 py-2.5 text-sm text-foreground/95 hover:bg-white/8 hover:text-foreground"
               >
                 {item.label}
               </Link>
