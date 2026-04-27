@@ -96,9 +96,10 @@ export function EventsManager() {
           {editing ? "Edit event" : "New event"}
         </h2>
         <p className="mt-1 text-xs text-mist">
-          Use <strong className="text-foreground/90">IST (India)</strong> for the calendar date and
-          clock time—the same as in-game. The public schedule converts to each player&rsquo;s local
-          time.
+          Enter the calendar <strong className="text-foreground/90">date and clock time in UTC+5:30
+          (IST, Asia/Kolkata)</strong>—our single reference for in-game / guild time (SEA). The
+          public site shows this to each member in <strong className="text-foreground/90">their
+          </strong> local time zone.
         </p>
         <form onSubmit={save} className="mt-4 space-y-3">
           <input

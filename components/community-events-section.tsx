@@ -63,9 +63,8 @@ export async function CommunityEventsSection() {
         Community events
       </h2>
       <p className="mx-auto mb-6 max-w-xl text-center text-sm text-mist">
-        Officers enter date and time in{" "}
-        <strong className="text-foreground/90">IST (India)</strong>, matching the game. Everyone
-        sees the same moment converted to their own time zone.
+        Start times below are in <strong className="text-foreground/90">your</strong> time zone.
+        Officers add and edit these in <strong className="text-foreground/90">Admin</strong>.
       </p>
       <div className="grid gap-4 md:grid-cols-2">
         {upcoming.map((e, i) => {
