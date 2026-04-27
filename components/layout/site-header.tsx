@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { NavMoreMenu } from "./nav-more-menu";
 
-const mainNav = [
+/** All public nav links; desktop uses a single horizontal scroller, small screens use the Menu panel. */
+const navItems = [
   { href: "/", label: "Home" },
   { href: "/schedule", label: "Schedule" },
   { href: "/quizzes", label: "Quizzes" },
@@ -9,10 +9,6 @@ const mainNav = [
   { href: "/members", label: "Members" },
   { href: "/recruitment", label: "Recruitment" },
   { href: "/gallery", label: "Gallery" },
-] as const;
-
-const allNav = [
-  ...mainNav,
   { href: "/leadership", label: "Leadership" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/admin", label: "Admin" },
@@ -31,8 +27,11 @@ export function SiteHeader() {
 
         <div className="hidden min-w-0 flex-1 md:block">
           <div className="min-w-0 max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="inline-flex min-h-[2.5rem] items-center gap-0.5 pl-1 sm:gap-1.5">
-              {mainNav.map((item) => (
+            <nav
+              className="inline-flex min-h-[2.5rem] items-center gap-0.5 pl-1 sm:gap-1.5"
+              aria-label="Main"
+            >
+              {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -41,9 +40,7 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-
-              <NavMoreMenu />
-            </div>
+            </nav>
           </div>
         </div>
 
@@ -52,7 +49,7 @@ export function SiteHeader() {
             Menu
           </summary>
           <div className="absolute right-0 z-[60] mt-2 w-52 max-h-[min(80vh,28rem)] overflow-y-auto rounded-lg border border-gold/30 bg-card py-1 shadow-2xl ring-1 ring-gold/20">
-            {allNav.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
