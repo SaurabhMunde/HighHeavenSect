@@ -59,10 +59,10 @@ export function HomeHero() {
               Recruitment
             </Link>
             <Link
-              href="/admin/login"
+              href="/admin"
               className="inline-flex items-center justify-center rounded-xl border border-mist/30 px-5 py-2.5 text-sm text-mist transition hover:border-gold/50 hover:text-foreground"
             >
-              Admin login
+              Admin
             </Link>
           </motion.div>
         </div>

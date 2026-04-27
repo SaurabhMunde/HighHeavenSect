@@ -15,7 +15,7 @@ const allNav = [
   { href: "/leadership", label: "Leadership" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/recruitment", label: "Recruitment" },
-  { href: "/admin/login", label: "Admin" },
+  { href: "/admin", label: "Admin" },
 ] as const;
 
 export function SiteHeader() {

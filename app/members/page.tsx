@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import { MEMBERS } from "@/lib/members";
+
+export const metadata: Metadata = {
+  title: "Members",
+  description:
+    "Meet the active roster of HighHeavenSect — a casual Where Winds Meet (WWM) SEA English guild and community.",
+  alternates: { canonical: "/members" },
+};
 
 export default function MembersPage() {
   return (

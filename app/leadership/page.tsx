@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import { LEADERSHIP } from "@/lib/leadership";
+
+export const metadata: Metadata = {
+  title: "Leadership",
+  description:
+    "Sect head, officers, and elders of HighHeavenSect — Where Winds Meet (WWM) SEA English guild leadership.",
+  alternates: { canonical: "/leadership" },
+};
 
 export default function LeadershipPage() {
   return (

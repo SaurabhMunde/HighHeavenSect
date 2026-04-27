@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Recruitment",
+  description:
+    "How to join HighHeavenSect — a casual Where Winds Meet (WWM) SEA English guild. Discord, officers, and an open gate for fellow wanderers.",
+  alternates: { canonical: "/recruitment" },
+};
 
 export default function RecruitmentPage() {
   return (

@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
 import { GiveawaySignupForm } from "@/components/giveaways";
 import { PublicCountdown } from "@/components/community";
+
+export const metadata: Metadata = {
+  title: "Giveaways",
+  description:
+    "HighHeavenSect WWM guild giveaways: rewards, signups, and winners for our SEA English Where Winds Meet community.",
+  alternates: { canonical: "/giveaways" },
+};
 
 export const dynamic = "force-dynamic";
 

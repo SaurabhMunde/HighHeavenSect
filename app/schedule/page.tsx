@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { CommunityEventsSection, StandingScheduleCards } from "@/components/community";
+
+export const metadata: Metadata = {
+  title: "Guild schedule",
+  description:
+    "HighHeavenSect WWM guild schedule: standing activities and officer-posted community events, shown in your local time zone. SEA English community.",
+  alternates: { canonical: "/schedule" },
+};
 
 export const dynamic = "force-dynamic";
 

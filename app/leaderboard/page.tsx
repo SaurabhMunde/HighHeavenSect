@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
+
+export const metadata: Metadata = {
+  title: "Leaderboard",
+  description:
+    "Member contribution leaderboard for the HighHeavenSect WWM guild — SEA English community.",
+  alternates: { canonical: "/leaderboard" },
+};
 
 export const revalidate = 60;
 

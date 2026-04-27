@@ -1,6 +1,22 @@
+import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
 import { HomeHero } from "@/components/home";
 import { Card } from "@/components/ui";
+import { getSiteUrl } from "@/lib/site";
+
+const homeDesc =
+  "Join HighHeavenSect — a casual Where Winds Meet (WWM) guild for SEA & English speakers. Site schedule, quizzes, giveaways, recruitment, and Discord.";
+
+export const metadata: Metadata = {
+  title: "Where Winds Meet (WWM) SEA English guild",
+  description: homeDesc,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "HighHeavenSect | WWM SEA English guild",
+    description: homeDesc,
+    url: getSiteUrl(),
+  },
+};
 
 function ProsperityBadge() {
   return (
@@ -26,11 +42,14 @@ export default function HomePage() {
         <Card>
           <h2 className="font-display text-xl text-gold-bright">Who we are</h2>
           <p className="mt-3 leading-relaxed text-mist">
-            HighHeavenSect is a <strong className="text-foreground">casual</strong>{" "}
-            <strong className="text-foreground">SEA</strong> English guild. We
-            value chill runs, clear comms, and good company on the long road. No
-            elitist drama, just cultivators who show up, help each other, and
-            enjoy the jianghu together.
+            We play <strong className="text-foreground">Where Winds Meet</strong>{" "}
+            (<abbr title="Where Winds Meet" className="no-underline">WWM</abbr>
+            )—a{" "}
+            <strong className="text-foreground">casual</strong>{" "}
+            <strong className="text-foreground">SEA</strong> English guild and
+            community for the jianghu. Chill runs, clear comms, and good company
+            on the long road. No elitist drama—just cultivators who show up, help
+            each other, and enjoy the game together.
           </p>
         </Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
