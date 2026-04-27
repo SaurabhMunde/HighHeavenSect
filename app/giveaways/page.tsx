@@ -1,9 +1,9 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { Card } from "@/components/ui-card";
+import { WuxiaShell } from "@/components/layout";
+import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
-import { GiveawaySignupForm } from "@/components/giveaway-signup-form";
-import { PublicCountdown } from "@/components/public-countdown";
+import { GiveawaySignupForm } from "@/components/giveaways";
+import { PublicCountdown } from "@/components/community";
 
 export const dynamic = "force-dynamic";
 

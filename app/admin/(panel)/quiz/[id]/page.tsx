@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { QuizQuestionEditor } from "@/components/admin-quiz-question-editor";
+import { QuizQuestionEditor } from "@/components/admin";
 
 export default async function AdminQuizEditPage({
   params,

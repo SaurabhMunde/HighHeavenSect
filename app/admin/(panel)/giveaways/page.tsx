@@ -1,4 +1,4 @@
-import { GiveawaysManager } from "@/components/admin-giveaways-manager";
+import { GiveawaysManager } from "@/components/admin";
 
 export default function AdminGiveawaysPage() {
   return (

@@ -1,4 +1,4 @@
-import { LeaderboardManager } from "@/components/admin-leaderboard-manager";
+import { LeaderboardManager } from "@/components/admin";
 
 export default function AdminLeaderboardPage() {
   return (

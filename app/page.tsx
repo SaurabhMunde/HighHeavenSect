@@ -1,6 +1,6 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { HomeHero } from "@/components/home-hero";
-import { Card } from "@/components/ui-card";
+import { WuxiaShell } from "@/components/layout";
+import { HomeHero } from "@/components/home";
+import { Card } from "@/components/ui";
 
 function ProsperityBadge() {
   return (

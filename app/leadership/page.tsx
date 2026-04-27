@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { Card } from "@/components/ui-card";
+import { WuxiaShell } from "@/components/layout";
+import { Card } from "@/components/ui";
 import { LEADERSHIP } from "@/lib/leadership";
 
 export default function LeadershipPage() {

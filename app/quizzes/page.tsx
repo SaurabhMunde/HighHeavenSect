@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { Card } from "@/components/ui-card";
+import { WuxiaShell } from "@/components/layout";
+import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
-import { PublicCountdown } from "@/components/public-countdown";
+import { PublicCountdown } from "@/components/community";
 import { isExpired, isNotYetOpen } from "@/lib/quiz-times";
 
 export const dynamic = "force-dynamic";

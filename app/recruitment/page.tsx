@@ -1,5 +1,5 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { Card } from "@/components/ui-card";
+import { WuxiaShell } from "@/components/layout";
+import { Card } from "@/components/ui";
 import Link from "next/link";
 
 export default function RecruitmentPage() {

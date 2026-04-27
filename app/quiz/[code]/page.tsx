@@ -1,5 +1,5 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { QuizPlayer } from "@/components/quiz-player";
+import { WuxiaShell } from "@/components/layout";
+import { QuizPlayer } from "@/components/quiz";
 
 export default async function PublicQuizPage({
   params,

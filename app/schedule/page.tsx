@@ -1,6 +1,5 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { CommunityEventsSection } from "@/components/community-events-section";
-import { StandingScheduleCards } from "@/components/standing-schedule-cards";
+import { WuxiaShell } from "@/components/layout";
+import { CommunityEventsSection, StandingScheduleCards } from "@/components/community";
 
 export const dynamic = "force-dynamic";
 

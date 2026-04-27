@@ -1,4 +1,4 @@
-import { RecruitmentManager } from "@/components/admin-recruitment-manager";
+import { RecruitmentManager } from "@/components/admin";
 
 export default function AdminRecruitmentPage() {
   return (

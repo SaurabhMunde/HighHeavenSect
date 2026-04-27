@@ -1,4 +1,4 @@
-import { QuizList } from "@/components/admin-quiz-list";
+import { QuizList } from "@/components/admin";
 
 export default function AdminQuizPage() {
   return (

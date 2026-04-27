@@ -1,5 +1,5 @@
-import { WuxiaShell } from "@/components/wuxia-shell";
-import { GalleryGrid } from "@/components/gallery-grid";
+import { WuxiaShell } from "@/components/layout";
+import { GalleryGrid } from "@/components/gallery";
 
 export default function GalleryPage() {
   return (
@@ -7,8 +7,8 @@ export default function GalleryPage() {
       <div className="mb-8 text-center">
         <h1 className="font-display text-3xl text-gold-bright">Gallery</h1>
         <p className="mt-2 text-mist">
-          Moments with the order. Hover on desktop to see the full image; tap or click
-          to open a larger view.
+          Moments with the order. Click a photo to open the preview, then close with
+          the button, the dimmed area, or Esc.
         </p>
       </div>
       <GalleryGrid />

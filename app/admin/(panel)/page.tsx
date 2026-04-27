@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card } from "@/components/ui-card";
+import { Card } from "@/components/ui";
 
 const tiles = [
   { href: "/admin/events", title: "Event manager", blurb: "Add, edit, and remove sect events." },
