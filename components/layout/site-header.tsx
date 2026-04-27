@@ -7,6 +7,7 @@ const mainNav = [
   { href: "/quizzes", label: "Quizzes" },
   { href: "/giveaways", label: "Giveaways" },
   { href: "/members", label: "Members" },
+  { href: "/recruitment", label: "Recruitment" },
   { href: "/gallery", label: "Gallery" },
 ] as const;
 
@@ -14,7 +15,6 @@ const allNav = [
   ...mainNav,
   { href: "/leadership", label: "Leadership" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/recruitment", label: "Recruitment" },
   { href: "/admin", label: "Admin" },
 ] as const;
 

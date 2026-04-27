@@ -13,7 +13,6 @@ import {
 const moreNav = [
   { href: "/leadership", label: "Leadership" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/recruitment", label: "Recruitment" },
   { href: "/admin", label: "Admin" },
 ] as const;
 

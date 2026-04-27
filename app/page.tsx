@@ -75,6 +75,11 @@ export default function HomePage() {
               h: "/members",
             },
             {
+              t: "Recruitment",
+              d: "How to join—casual, clear comms, Discord first.",
+              h: "/recruitment",
+            },
+            {
               t: "Leadership",
               d: "Sect head, officers, and elders of the order.",
               h: "/leadership",
