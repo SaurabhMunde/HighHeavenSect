@@ -54,7 +54,6 @@ export function QuizPlayer({
   const [tournamentToStart, setTournamentToStart] = useState(0);
   const [globalLeft, setGlobalLeft] = useState(0);
   const [answered, setAnswered] = useState(false);
-  const [soundOn, setSoundOn] = useState(true);
   const [existing, setExisting] = useState<{ score: number; max: number } | null>(null);
   const [ranks, setRanks] = useState<RankRow[]>([]);
   const [tournamentJoined, setTournamentJoined] = useState(false);
@@ -78,7 +77,7 @@ export function QuizPlayer({
     frequency?: number;
     durationMs?: number;
   }) {
-    if (!soundOn || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     if (!audioCtxRef.current) {
@@ -519,16 +518,7 @@ export function QuizPlayer({
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
-        <button
-          type="button"
-          onClick={() => setSoundOn((v) => !v)}
-          className="rounded-lg border border-gold/30 px-2.5 py-1 text-xs text-mist hover:text-foreground"
-        >
-          {soundOn ? "Sound: On" : "Sound: Off"}
-        </button>
-      </div>
+      <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
       {err && <p className="mt-2 text-center text-sm text-red-400">{err}</p>}
       {phase === "lobby" && (
         <div className="mt-8 text-center">
