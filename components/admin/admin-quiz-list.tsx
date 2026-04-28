@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { logGuildAction } from "@/lib/guild-log";
+import { QUIZ_STATUSES, QUIZ_TYPES, statusLabel } from "@/lib/quiz-meta";
 import { Card } from "@/components/ui";
 
 type Quiz = {
   id: string;
   title: string;
   time_limit_seconds: number;
+  quiz_type: "trial" | "tournament";
+  join_window_seconds: number;
   join_code: string;
   scheduled_at: string | null;
   opens_at: string | null;
@@ -20,11 +23,16 @@ type Quiz = {
 export function QuizList() {
   const supabase = createClient();
   const [rows, setRows] = useState<Quiz[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [timeLimit, setTimeLimit] = useState(20);
-  const [scheduled, setScheduled] = useState("");
+  const [quizType, setQuizType] = useState<"trial" | "tournament">("trial");
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [joinWindow, setJoinWindow] = useState(45);
 
   async function load() {
+    setActionError(null);
     const { data } = await supabase
       .from("quizzes")
       .select("*")
@@ -39,17 +47,14 @@ export function QuizList() {
 
   async function createQuiz(e: React.FormEvent) {
     e.preventDefault();
-    const opens = scheduled ? new Date(scheduled).toISOString() : null;
-    const closes =
-      opens && timeLimit
-        ? new Date(
-            new Date(opens).getTime() + timeLimit * 1000,
-          ).toISOString()
-        : null;
+    const opens = startAt ? new Date(startAt).toISOString() : null;
+    const closes = endAt ? new Date(endAt).toISOString() : null;
     const { data: authData } = await supabase.auth.getUser();
     const { error } = await supabase.from("quizzes").insert({
       title,
       time_limit_seconds: timeLimit,
+      quiz_type: quizType,
+      join_window_seconds: joinWindow,
       scheduled_at: opens,
       opens_at: opens,
       closes_at: closes,
@@ -61,9 +66,15 @@ export function QuizList() {
         supabase,
         `${who} created quiz “${title}”${opens ? " (opens " + new Date(opens).toLocaleString() + ", local on device)" : ""}.`,
       );
+    } else {
+      setActionError(error.message);
+      alert(`Create failed: ${error.message}`);
     }
     setTitle("");
-    setScheduled("");
+    setQuizType("trial");
+    setStartAt("");
+    setEndAt("");
+    setJoinWindow(45);
     load();
   }
 
@@ -91,14 +102,47 @@ export function QuizList() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-mist">Schedule (optional)</label>
+            <label className="text-xs text-mist">Type</label>
+            <select
+              value={quizType}
+              onChange={(e) => setQuizType(e.target.value as "trial" | "tournament")}
+              className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
+            >
+              <option value="trial">Sect Trial</option>
+              <option value="tournament">Heavenly Tournament</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-mist">Start time</label>
             <input
               type="datetime-local"
-              value={scheduled}
-              onChange={(e) => setScheduled(e.target.value)}
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
               className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
             />
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-mist">End time</label>
+            <input
+              type="datetime-local"
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
+              className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
+            />
+          </div>
+          {quizType === "tournament" && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-mist">Join window (sec)</label>
+              <input
+                type="number"
+                min={30}
+                max={120}
+                value={joinWindow}
+                onChange={(e) => setJoinWindow(+e.target.value)}
+                className="w-20 rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
+              />
+            </div>
+          )}
           <button
             type="submit"
             className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-void"
@@ -108,6 +152,9 @@ export function QuizList() {
         </form>
       </Card>
       <div className="space-y-2">
+        {actionError && (
+          <p className="text-sm text-red-400">Quiz action failed: {actionError}</p>
+        )}
         {rows.length === 0 && <p className="text-mist">No quizzes yet.</p>}
         {rows.map((q) => (
           <Card key={q.id} className="!py-4">
@@ -115,14 +162,14 @@ export function QuizList() {
               <div>
                 <h3 className="font-medium text-foreground">{q.title}</h3>
                 <p className="text-xs text-mist">
-                  {q.time_limit_seconds}s per question, status: {q.status}
+                  {q.quiz_type === "tournament" ? "Heavenly Tournament" : "Sect Trial"} · {q.time_limit_seconds}s per question · status: {q.status} ({statusLabel(q.status)})
                   {q.opens_at
                     ? ` · opens ${new Date(q.opens_at).toLocaleString()} (local on device when viewing public pages)`
                     : q.scheduled_at
                       ? ` · opens ${new Date(q.scheduled_at).toLocaleString()} (local when viewing public pages)`
                       : ""}
                   {q.closes_at
-                    ? ` · room closes ${new Date(q.closes_at).toLocaleString()} (after questions, admin syncs in editor)`
+                    ? ` · room closes ${new Date(q.closes_at).toLocaleString()} (auto-closes at this time)`
                     : ""}
                 </p>
                 <a
@@ -137,25 +184,72 @@ export function QuizList() {
               <div className="flex gap-2">
                 <Link
                   href={`/admin/quiz/${q.id}`}
-                  className="rounded-lg border border-gold/30 px-3 py-1.5 text-sm text-gold"
+                  className={`rounded-lg border border-gold/30 px-3 py-1.5 text-sm ${
+                    q.status === "draft" ? "text-gold" : "pointer-events-none text-mist/60"
+                  }`}
+                  title={q.status === "draft" ? undefined : "Editing is only allowed in draft mode"}
                 >
                   Edit questions
                 </Link>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("quizzes")
+                      .update({ status: "simulation" })
+                      .eq("id", q.id);
+                    if (error) {
+                      setActionError(error.message);
+                      alert(`Move to Simulation failed: ${error.message}`);
+                      return;
+                    }
+                    await load();
+                  }}
+                  className="rounded-lg border border-gold/30 px-3 py-1.5 text-sm text-gold"
+                >
+                  Move to Simulation
+                </button>
                 <select
                   value={q.status}
                   onChange={async (e) => {
-                    await supabase
+                    const { error } = await supabase
                       .from("quizzes")
                       .update({ status: e.target.value })
                       .eq("id", q.id);
+                    if (error) {
+                      setActionError(error.message);
+                      alert(`Status update failed: ${error.message}`);
+                      return;
+                    }
                     load();
                   }}
                   className="rounded-lg border border-gold/25 bg-void px-2 py-1.5 text-sm"
                 >
-                  <option value="draft">draft</option>
-                  <option value="scheduled">scheduled</option>
-                  <option value="live">live</option>
-                  <option value="ended">ended</option>
+                  {QUIZ_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={q.quiz_type}
+                  onChange={async (e) => {
+                    const next = e.target.value as (typeof QUIZ_TYPES)[number];
+                    const { error } = await supabase
+                      .from("quizzes")
+                      .update({ quiz_type: next })
+                      .eq("id", q.id);
+                    if (error) {
+                      setActionError(error.message);
+                      alert(`Quiz type update failed: ${error.message}`);
+                      return;
+                    }
+                    await load();
+                  }}
+                  className="rounded-lg border border-gold/25 bg-void px-2 py-1.5 text-sm"
+                >
+                  <option value="trial">Sect Trial</option>
+                  <option value="tournament">Heavenly Tournament</option>
                 </select>
                 <button
                   type="button"

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getOrCreatePlayerKey } from "@/lib/player-key";
 import { computeClosesAtIso, isExpired, isNotYetOpen } from "@/lib/quiz-times";
 import { motion, AnimatePresence } from "framer-motion";
+import { statusLabel } from "@/lib/quiz-meta";
 
 type QRow = {
   id: string;
@@ -17,6 +18,8 @@ type Quiz = {
   id: string;
   title: string;
   time_limit_seconds: number;
+  quiz_type: "trial" | "tournament";
+  join_window_seconds: number;
   status: string;
   scheduled_at: string | null;
   opens_at: string | null;
@@ -25,7 +28,20 @@ type Quiz = {
 
 type Phase = "load" | "lobby" | "name" | "question" | "done" | "closed";
 
-export function QuizPlayer({ code }: { code: string }) {
+type RankRow = {
+  player_key: string;
+  in_game_name: string;
+  score: number;
+  current_question: number;
+};
+
+export function QuizPlayer({
+  code,
+  simulation = false,
+}: {
+  code: string;
+  simulation?: boolean;
+}) {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -35,14 +51,20 @@ export function QuizPlayer({ code }: { code: string }) {
   const [score, setScore] = useState(0);
   const [inGame, setInGame] = useState("");
   const [lobbyToOpen, setLobbyToOpen] = useState(0);
+  const [tournamentToStart, setTournamentToStart] = useState(0);
   const [globalLeft, setGlobalLeft] = useState(0);
   const [existing, setExisting] = useState<{ score: number; max: number } | null>(null);
+  const [ranks, setRanks] = useState<RankRow[]>([]);
+  const [tournamentJoined, setTournamentJoined] = useState(false);
   const [topWinner, setTopWinner] = useState<{
     in_game_name: string;
     score: number;
     max_score: number;
   } | null>(null);
+  const questionStartedAt = useRef<number>(0);
+  const selfPlayerKey = useRef<string>("");
   const saveOnce = useRef(false);
+  const isSimulationRun = simulation;
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -50,7 +72,7 @@ export function QuizPlayer({ code }: { code: string }) {
     const { data: qz, error } = await supabase
       .from("quizzes")
       .select(
-        "id, title, time_limit_seconds, status, scheduled_at, opens_at, closes_at, join_code",
+        "id, title, time_limit_seconds, quiz_type, join_window_seconds, status, scheduled_at, opens_at, closes_at, join_code",
       )
       .ilike("join_code", normalized)
       .maybeSingle();
@@ -59,6 +81,10 @@ export function QuizPlayer({ code }: { code: string }) {
       return;
     }
     const Q = qz as Quiz;
+    if (Q.status === "simulation" && !isSimulationRun) {
+      setErr("This quiz is in simulation mode (admin only).");
+      return;
+    }
     if (!Q.opens_at && Q.scheduled_at) {
       Q.opens_at = Q.scheduled_at;
     }
@@ -82,6 +108,16 @@ export function QuizPlayer({ code }: { code: string }) {
     }
     setQuiz(Q);
     const player = getOrCreatePlayerKey();
+    selfPlayerKey.current = player;
+    if (Q.quiz_type === "tournament") {
+      const { data: live } = await supabase
+        .from("quiz_tournament_sessions")
+        .select("player_key, in_game_name, score, current_question")
+        .eq("quiz_id", Q.id)
+        .order("score", { ascending: false })
+        .order("updated_at", { ascending: true });
+      setRanks((live ?? []) as RankRow[]);
+    }
     const { data: att } = await supabase
       .from("quiz_attempts")
       .select("score, max_score")
@@ -100,12 +136,12 @@ export function QuizPlayer({ code }: { code: string }) {
       .limit(1)
       .maybeSingle();
     if (best) setTopWinner(best);
-    if (Q.closes_at && isExpired(Q.closes_at) && !att) {
+    if (!isSimulationRun && Q.closes_at && isExpired(Q.closes_at) && !att) {
       setPhase("closed");
     } else {
       setPhase("lobby");
     }
-  }, [code]);
+  }, [code, isSimulationRun]);
 
   useEffect(() => {
     load();
@@ -114,11 +150,18 @@ export function QuizPlayer({ code }: { code: string }) {
   const opens = quiz?.opens_at || quiz?.scheduled_at || null;
   const closes = quiz?.closes_at || null;
   const hardExpired = closes ? isExpired(closes) : false;
-  const beforeOpen = opens ? isNotYetOpen(opens) : false;
+  const isTournament = quiz?.quiz_type === "tournament";
+  const joinWindowSeconds = quiz?.join_window_seconds ?? 45;
+  const joinDeadline =
+    opens && isTournament ? new Date(new Date(opens).getTime() + joinWindowSeconds * 1000).toISOString() : null;
+  const joinClosed = joinDeadline ? isExpired(joinDeadline) : false;
+  const isScheduled = quiz?.status === "scheduled";
+  const isBeforeScheduledOpen = isScheduled && opens ? isNotYetOpen(opens) : false;
+  const isStatusAllowed = quiz ? ["live", "scheduled", "simulation"].includes(quiz.status) : false;
 
   useEffect(() => {
-    if (phase === "load" || !opens) return;
-    if (beforeOpen) {
+    if (phase === "load" || !opens || isSimulationRun) return;
+    if (isBeforeScheduledOpen) {
       const t = setInterval(() => {
         setLobbyToOpen(
           Math.max(0, Math.floor((new Date(opens).getTime() - Date.now()) / 1000)),
@@ -126,7 +169,41 @@ export function QuizPlayer({ code }: { code: string }) {
       }, 200);
       return () => clearInterval(t);
     }
-  }, [phase, opens, beforeOpen]);
+  }, [phase, opens, isBeforeScheduledOpen, isSimulationRun]);
+
+  useEffect(() => {
+    if (!joinDeadline || phase !== "name" || !tournamentJoined || !isTournament) return;
+    const id = setInterval(() => {
+      setTournamentToStart(
+        Math.max(0, Math.floor((new Date(joinDeadline).getTime() - Date.now()) / 1000)),
+      );
+    }, 200);
+    return () => clearInterval(id);
+  }, [joinDeadline, phase, tournamentJoined, isTournament]);
+
+  useEffect(() => {
+    if (!isTournament || phase !== "name" || !tournamentJoined) return;
+    if (joinClosed) {
+      questionStartedAt.current = Date.now();
+      setPhase("question");
+    }
+  }, [isTournament, phase, tournamentJoined, joinClosed]);
+
+  useEffect(() => {
+    if (!quiz || !isTournament) return;
+    if (!(phase === "lobby" || phase === "question" || phase === "done")) return;
+    const supabase = createClient();
+    const id = setInterval(async () => {
+      const { data } = await supabase
+        .from("quiz_tournament_sessions")
+        .select("player_key, in_game_name, score, current_question")
+        .eq("quiz_id", quiz.id)
+        .order("score", { ascending: false })
+        .order("updated_at", { ascending: true });
+      setRanks((data ?? []) as RankRow[]);
+    }, 1500);
+    return () => clearInterval(id);
+  }, [quiz, isTournament, phase]);
 
   useEffect(() => {
     if (phase !== "question" || !quiz || !closes) return;
@@ -142,13 +219,13 @@ export function QuizPlayer({ code }: { code: string }) {
 
   useEffect(() => {
     if (phase !== "question" || !quiz || !current) return;
-    if (closes && isExpired(closes)) {
+    if (!isSimulationRun && closes && isExpired(closes)) {
       setPhase("done");
       return;
     }
     setSecondsLeft(quiz.time_limit_seconds);
     const id = setInterval(() => {
-      if (closes && Date.now() >= new Date(closes).getTime()) {
+      if (!isSimulationRun && closes && Date.now() >= new Date(closes).getTime()) {
         setPhase("done");
         return;
       }
@@ -168,11 +245,12 @@ export function QuizPlayer({ code }: { code: string }) {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [phase, qIndex, quiz, current, questions.length, closes]);
+  }, [phase, qIndex, quiz, current, questions.length, closes, isSimulationRun]);
 
   useEffect(() => {
     if (phase !== "done" || !quiz || !questions.length) return;
     if (!inGame.trim() || saveOnce.current) return;
+    if (isSimulationRun || quiz.status === "simulation") return;
     (async () => {
       if (saveOnce.current) return;
       const s = createClient();
@@ -182,17 +260,21 @@ export function QuizPlayer({ code }: { code: string }) {
         player_key: key,
         in_game_name: inGame.trim(),
         score,
-        max_score: questions.length,
+        max_score: quiz.quiz_type === "trial" ? questions.length : questions.length * 1000,
       });
       saveOnce.current = true;
       if (error && !/duplicate|unique/i.test(String(error.message))) {
         setErr(error.message);
       }
     })();
-  }, [phase, quiz, inGame, score, questions.length]);
+  }, [phase, quiz, inGame, score, questions.length, isSimulationRun]);
 
   function startNameStep() {
     if (!quiz) return;
+    if (!isSimulationRun && !isStatusAllowed) {
+      setErr(`Quiz is ${quiz.status} (${statusLabel(quiz.status)}).`);
+      return;
+    }
     if (questions.length === 0) {
       setErr("No questions in this round yet.");
       return;
@@ -201,16 +283,25 @@ export function QuizPlayer({ code }: { code: string }) {
       setErr("You have already completed this quiz on this device.");
       return;
     }
-    if (beforeOpen) return;
-    if (hardExpired) {
+    if (!isSimulationRun && isBeforeScheduledOpen) {
+      return;
+    }
+    if (!isSimulationRun && hardExpired) {
       setErr("This quiz is closed. See results below if available.");
       setPhase("closed");
       return;
     }
+    if (!isSimulationRun && quiz.quiz_type === "tournament" && joinClosed) {
+      setErr("Join window is closed for this tournament.");
+      setPhase("closed");
+      return;
+    }
+    setTournamentJoined(false);
     setPhase("name");
   }
 
   function startQuestions() {
+    if (!quiz) return;
     if (!inGame.trim()) {
       setErr("Enter your in-game name to start.");
       return;
@@ -223,20 +314,75 @@ export function QuizPlayer({ code }: { code: string }) {
         Math.max(0, Math.floor((new Date(closes).getTime() - Date.now()) / 1000)),
       );
     }
+    if (quiz.quiz_type === "tournament") {
+      const supabase = createClient();
+      const key = getOrCreatePlayerKey();
+      void supabase.from("quiz_tournament_sessions").upsert(
+        {
+          quiz_id: quiz.id,
+          player_key: key,
+          in_game_name: inGame.trim(),
+          score: 0,
+          current_question: 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "quiz_id,player_key" },
+      );
+      setTournamentJoined(true);
+      if (joinClosed || isSimulationRun) {
+        questionStartedAt.current = Date.now();
+        setPhase("question");
+      }
+      return;
+    }
+    questionStartedAt.current = Date.now();
     setPhase("question");
   }
 
-  function pick(i: number) {
+  async function pick(i: number) {
     if (!current || !quiz) return;
-    if (closes && Date.now() >= new Date(closes).getTime()) {
+    if (!isSimulationRun && closes && Date.now() >= new Date(closes).getTime()) {
       setPhase("done");
       return;
     }
-    if (i === current.correct_index) setScore((s) => s + 1);
+    if (quiz.quiz_type === "trial") {
+      if (i === current.correct_index) setScore((s) => s + 1);
+    } else {
+      const responseMs = Math.max(0, Date.now() - questionStartedAt.current);
+      const maxMs = Math.max(1, quiz.time_limit_seconds * 1000);
+      const isCorrect = i === current.correct_index;
+      const bonus = Math.floor((Math.max(0, maxMs - responseMs) / maxMs) * 900);
+      const points = isCorrect ? 100 + bonus : 0;
+      const nextScore = score + points;
+      setScore(nextScore);
+      const s = createClient();
+      const key = getOrCreatePlayerKey();
+      await s.from("quiz_tournament_answers").insert({
+        quiz_id: quiz.id,
+        question_id: current.id,
+        player_key: key,
+        answer_index: i,
+        is_correct: isCorrect,
+        points,
+        response_ms: responseMs,
+      });
+      await s.from("quiz_tournament_sessions").upsert(
+        {
+          quiz_id: quiz.id,
+          player_key: key,
+          in_game_name: inGame.trim() || "Anonymous",
+          score: nextScore,
+          current_question: Math.min(qIndex + 1, questions.length),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "quiz_id,player_key" },
+      );
+    }
     if (qIndex + 1 >= questions.length) {
       setPhase("done");
     } else {
       setQIndex((x) => x + 1);
+      questionStartedAt.current = Date.now();
     }
   }
 
@@ -247,7 +393,7 @@ export function QuizPlayer({ code }: { code: string }) {
     return <p className="text-mist">Opening scroll…</p>;
   }
 
-  if (existing && phase === "lobby") {
+  if (existing && phase === "lobby" && !isTournament) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
@@ -259,7 +405,11 @@ export function QuizPlayer({ code }: { code: string }) {
     );
   }
 
-  if (hardExpired && (phase === "lobby" || phase === "closed" || (phase === "name" && !inGame))) {
+  if (
+    !isSimulationRun &&
+    hardExpired &&
+    (phase === "lobby" || phase === "closed" || (phase === "name" && !inGame))
+  ) {
     return (
       <div className="mx-auto max-w-lg text-center">
         <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
@@ -286,13 +436,29 @@ export function QuizPlayer({ code }: { code: string }) {
     );
   }
 
+  if (!isSimulationRun && !isStatusAllowed && (phase === "lobby" || phase === "name")) {
+    return (
+      <div className="mx-auto max-w-lg text-center">
+        <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
+        <p className="mt-4 text-mist">
+          This quiz is locked ({statusLabel(quiz.status)}). It will open for players when officers set it to live.
+        </p>
+        {opens && (
+          <p className="mt-2 text-xs text-mist/80">
+            Scheduled open: {new Date(opens).toLocaleString()} (local)
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="text-center font-display text-2xl text-gold-bright">{quiz.title}</h1>
       {err && <p className="mt-2 text-center text-sm text-red-400">{err}</p>}
       {phase === "lobby" && (
         <div className="mt-8 text-center">
-          {beforeOpen && (
+          {isBeforeScheduledOpen && !isSimulationRun && (
             <div>
               <p className="text-mist">Opens at (your local time):</p>
               <p className="mt-1 text-gold-bright">
@@ -303,7 +469,7 @@ export function QuizPlayer({ code }: { code: string }) {
               </p>
             </div>
           )}
-          {!beforeOpen && !hardExpired && (
+          {(isSimulationRun || (!isBeforeScheduledOpen && !hardExpired)) && (
             <button
               type="button"
               onClick={startNameStep}
@@ -312,10 +478,43 @@ export function QuizPlayer({ code }: { code: string }) {
               Continue
             </button>
           )}
+          {isSimulationRun && (
+            <p className="mt-2 text-xs text-mist">
+              Simulation run ignores start/end locks so admins can test flow safely.
+            </p>
+          )}
           <p className="mt-4 text-sm text-mist">
-            {questions.length} questions, {quiz.time_limit_seconds}s each, total time cap{" "}
-            {questions.length * quiz.time_limit_seconds}s from open.
+            {questions.length} questions, {quiz.time_limit_seconds}s each
+            {quiz.quiz_type === "trial"
+              ? `, total time cap ${questions.length * quiz.time_limit_seconds}s from open.`
+              : "."}
           </p>
+          {quiz.quiz_type === "tournament" && joinDeadline && (
+            <p className="mt-2 text-xs text-mist">
+              Join window ends: {new Date(joinDeadline).toLocaleString()} (local)
+            </p>
+          )}
+          {quiz.quiz_type === "tournament" && (
+            <p className="mt-1 text-xs text-mist/80">
+              Tournament starts automatically when join window ends.
+            </p>
+          )}
+          {quiz.quiz_type === "tournament" && (
+            <div className="mx-auto mt-4 max-w-md rounded-xl border border-gold/20 bg-void/40 p-3 text-left">
+              <p className="text-xs text-mist">Live ranking</p>
+              <ol className="mt-2 space-y-1 text-sm">
+                {ranks.slice(0, 6).map((r, idx) => (
+                  <li key={`${r.player_key}-${idx}`} className="flex items-center justify-between">
+                    <span className={r.player_key === selfPlayerKey.current ? "text-gold-bright" : "text-mist"}>
+                      #{idx + 1} {r.in_game_name}
+                    </span>
+                    <span className="text-gold-bright">{r.score}</span>
+                  </li>
+                ))}
+                {ranks.length === 0 && <li className="text-mist">Waiting for players...</li>}
+              </ol>
+            </div>
+          )}
           {closes && (
             <p className="text-xs text-mist/80">
               Room closes: {new Date(closes).toLocaleString()} (local)
@@ -333,17 +532,38 @@ export function QuizPlayer({ code }: { code: string }) {
             className="w-full rounded-lg border border-gold/25 bg-void px-3 py-2"
             value={inGame}
             onChange={(e) => setInGame(e.target.value)}
+            disabled={isTournament && tournamentJoined}
             maxLength={64}
             autoFocus
             placeholder="IGN"
           />
-          <button
-            type="button"
-            onClick={startQuestions}
-            className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-void"
-          >
-            Start quiz
-          </button>
+          {!isTournament && (
+            <button
+              type="button"
+              onClick={startQuestions}
+              className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-void"
+            >
+              Start quiz
+            </button>
+          )}
+          {isTournament && !tournamentJoined && (
+            <button
+              type="button"
+              onClick={startQuestions}
+              className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-void"
+            >
+              Join tournament
+            </button>
+          )}
+          {isTournament && tournamentJoined && (
+            <div className="rounded-xl border border-gold/25 bg-void/40 p-3 text-center">
+              <p className="text-sm text-mist">Waiting for players...</p>
+              <p className="mt-1 font-display text-4xl text-gold-bright tabular-nums">
+                {tournamentToStart}
+              </p>
+              <p className="text-xs text-mist/80">Auto-start after join window closes.</p>
+            </div>
+          )}
         </div>
       )}
       <AnimatePresence mode="wait">
@@ -377,6 +597,24 @@ export function QuizPlayer({ code }: { code: string }) {
                 </button>
               ))}
             </div>
+            {quiz.quiz_type === "tournament" && (
+              <div className="mt-4 rounded-lg border border-gold/20 bg-void/30 p-3">
+                <p className="text-xs text-mist">Live ranking</p>
+                <ol className="mt-2 space-y-1 text-sm">
+                  {ranks.slice(0, 8).map((r, idx) => (
+                    <li
+                      key={`${r.player_key}-${idx}`}
+                      className="flex items-center justify-between transition-all duration-300"
+                    >
+                      <span className={r.player_key === selfPlayerKey.current ? "text-gold-bright" : "text-mist"}>
+                        #{idx + 1} {r.in_game_name}
+                      </span>
+                      <span className="text-gold-bright drop-shadow-[0_0_6px_rgba(237,199,122,0.65)]">{r.score}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -388,8 +626,32 @@ export function QuizPlayer({ code }: { code: string }) {
         >
           <p className="text-mist">Spar complete</p>
           <p className="mt-2 font-display text-3xl text-gold-bright">
-            {score} / {questions.length}
+            {quiz.quiz_type === "trial" ? `${score} / ${questions.length}` : `${score} points`}
           </p>
+          {quiz.quiz_type === "tournament" && (
+            <div className="mx-auto mt-6 max-w-md rounded-2xl border border-gold/30 bg-card/80 p-4">
+              <p className="text-sm text-mist">Tournament leaderboard</p>
+              <ol className="mt-3 space-y-2">
+                {ranks.map((r, idx) => (
+                  <li
+                    key={`${r.player_key}-${idx}`}
+                    className="flex items-center justify-between rounded-lg bg-void/40 px-3 py-2"
+                  >
+                    <span
+                      className={
+                        idx < 3
+                          ? "font-medium text-gold-bright drop-shadow-[0_0_8px_rgba(237,199,122,0.7)]"
+                          : "text-mist"
+                      }
+                    >
+                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`} {r.in_game_name}
+                    </span>
+                    <span className="text-gold-bright">{r.score}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

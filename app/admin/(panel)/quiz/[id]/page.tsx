@@ -11,7 +11,7 @@ export default async function AdminQuizEditPage({
   const supabase = await createClient();
   const { data: quiz } = await supabase
     .from("quizzes")
-    .select("id, title, time_limit_seconds")
+    .select("id, title, time_limit_seconds, status")
     .eq("id", id)
     .single();
   if (!quiz) notFound();
@@ -21,6 +21,7 @@ export default async function AdminQuizEditPage({
         Questions: {quiz.title}
       </h1>
       <p className="mt-1 text-mist">Timer: {quiz.time_limit_seconds}s per question</p>
+      <p className="text-xs text-mist">Status: {quiz.status}</p>
       <div className="mt-6">
         <QuizQuestionEditor quizId={quiz.id} />
       </div>

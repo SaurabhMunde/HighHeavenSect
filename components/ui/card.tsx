@@ -17,7 +17,7 @@ export function Card({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay }}
-      className={`rounded-2xl border border-gold/20 bg-card/80 p-5 shadow-card backdrop-blur-sm md:p-6 ${className}`}
+      className={`rounded-2xl border border-gold/25 bg-card/90 p-5 shadow-card md:p-6 ${className}`}
     >
       {children}
     </motion.div>

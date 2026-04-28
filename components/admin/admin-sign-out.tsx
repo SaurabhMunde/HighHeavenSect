@@ -14,7 +14,7 @@ export function AdminSignOut() {
         router.push("/admin/login");
         router.refresh();
       }}
-      className="rounded-md px-2 py-1 text-mist transition hover:text-foreground"
+      className="rounded-lg border border-gold/20 px-2.5 py-1 text-mist transition hover:border-gold/35 hover:text-foreground"
     >
       Sign out
     </button>

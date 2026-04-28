@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
 import { PublicCountdown } from "@/components/community";
 import { isExpired, isNotYetOpen } from "@/lib/quiz-times";
+import { statusLabel } from "@/lib/quiz-meta";
 
 export const metadata: Metadata = {
   title: "Quizzes",
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 type Quiz = {
   id: string;
   title: string;
+  quiz_type: "trial" | "tournament";
   time_limit_seconds: number;
   join_code: string;
   scheduled_at: string | null;
@@ -37,9 +39,10 @@ export default async function PublicQuizzesPage() {
     const { data } = await supabase
       .from("quizzes")
       .select(
-        "id, title, time_limit_seconds, join_code, scheduled_at, opens_at, closes_at, status",
+        "id, title, quiz_type, time_limit_seconds, join_code, scheduled_at, opens_at, closes_at, status",
       )
       .neq("status", "draft")
+      .neq("status", "simulation")
       .order("created_at", { ascending: false });
     rows = (data ?? []) as Quiz[];
     for (const q of rows) {
@@ -64,8 +67,9 @@ export default async function PublicQuizzesPage() {
       <div className="mb-8 text-center">
         <h1 className="font-display text-3xl text-gold-bright">Quizzes</h1>
         <p className="mt-2 mx-auto max-w-2xl text-mist">
-          Start and end use your own device time zone. The room has a hard close when the time budget
-          runs out (questions x seconds per question from open). One attempt per browser for each quiz.
+          Start and end use your own device time zone. Each quiz stays open only inside its configured
+          start/end window, and closes automatically at the shown room close time. One attempt per
+          browser for each Sect Trial quiz.
         </p>
       </div>
       {!hasSupabase() && (
@@ -81,18 +85,24 @@ export default async function PublicQuizzesPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {rows.map((q, i) => {
           const openAt = q.opens_at || q.scheduled_at;
-          const canEnter =
-            openAt &&
+          const isLive = q.status === "live";
+          const isScheduled = q.status === "scheduled";
+          const inScheduledWindow =
+            !!openAt &&
             !isNotYetOpen(openAt) &&
-            (q.closes_at ? !isExpired(q.closes_at) : true) &&
-            q.status !== "ended";
+            (q.closes_at ? !isExpired(q.closes_at) : true);
+          const liveWindowOpen = q.closes_at ? !isExpired(q.closes_at) : true;
+          const canEnter =
+            q.status !== "ended" &&
+            ((isScheduled && inScheduledWindow) || (isLive && liveWindowOpen));
           const done =
-            (q.closes_at && isExpired(q.closes_at)) || q.status === "ended";
+            q.status === "ended" ||
+            ((isLive || isScheduled) && q.closes_at && isExpired(q.closes_at));
           return (
             <Card key={q.id} delay={0.04 * i}>
               <h2 className="font-display text-lg text-gold-bright">{q.title}</h2>
               <p className="mt-1 text-sm text-mist">
-                {q.time_limit_seconds}s per question, status: {q.status}
+                {q.quiz_type === "tournament" ? "Heavenly Tournament" : "Sect Trial"} · {q.time_limit_seconds}s per question, status: {q.status} ({statusLabel(q.status)})
               </p>
               {openAt && (
                 <p className="text-xs text-mist">
@@ -120,6 +130,11 @@ export default async function PublicQuizzesPage() {
               )}
               {!canEnter && !done && !openAt && q.status !== "ended" && (
                 <p className="mt-2 text-sm text-mist">Set a start time in admin, then this link unlocks in time.</p>
+              )}
+              {isScheduled && openAt && isNotYetOpen(openAt) && (
+                <p className="mt-2 text-sm text-mist">
+                  Quiz is scheduled. It will open automatically at the start time.
+                </p>
               )}
               {done && (
                 <div className="mt-3 text-sm text-mist">

@@ -44,11 +44,11 @@ export default function HomePage() {
           <p className="mt-3 leading-relaxed text-mist">
             We play <strong className="text-foreground">Where Winds Meet</strong>{" "}
             (<abbr title="Where Winds Meet" className="no-underline">WWM</abbr>
-            )—a{" "}
+            ), a{" "}
             <strong className="text-foreground">casual</strong>{" "}
             <strong className="text-foreground">SEA</strong> English guild and
             community for the jianghu. Chill runs, clear comms, and good company
-            on the long road. No elitist drama—just cultivators who show up, help
+            on the long road. No elitist drama, just cultivators who show up, help
             each other, and enjoy the game together.
           </p>
         </Card>
@@ -76,7 +76,7 @@ export default function HomePage() {
             },
             {
               t: "Recruitment",
-              d: "How to join—casual, clear comms, Discord first.",
+              d: "How to join, casual culture, clear comms, Discord first.",
               h: "/recruitment",
             },
             {
