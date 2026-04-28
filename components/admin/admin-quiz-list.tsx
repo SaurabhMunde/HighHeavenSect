@@ -47,8 +47,14 @@ export function QuizList() {
 
   async function createQuiz(e: React.FormEvent) {
     e.preventDefault();
-    const opens = startAt ? new Date(startAt).toISOString() : null;
-    const closes = endAt ? new Date(endAt).toISOString() : null;
+    const openDate = startAt ? new Date(startAt) : null;
+    const closeDate = endAt ? new Date(endAt) : null;
+    // If end is earlier than start, treat it as next-day close (midnight rollover).
+    if (openDate && closeDate && closeDate.getTime() <= openDate.getTime()) {
+      closeDate.setDate(closeDate.getDate() + 1);
+    }
+    const opens = openDate ? openDate.toISOString() : null;
+    const closes = closeDate ? closeDate.toISOString() : null;
     const { data: authData } = await supabase.auth.getUser();
     const { error } = await supabase.from("quizzes").insert({
       title,

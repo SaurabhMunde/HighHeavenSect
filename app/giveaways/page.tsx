@@ -4,7 +4,7 @@ import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
 import { GiveawaySignupForm } from "@/components/giveaways";
-import { PublicCountdown } from "@/components/community";
+import { LocalDateTime, PublicCountdown } from "@/components/community";
 
 export const metadata: Metadata = {
   title: "Giveaways",
@@ -124,7 +124,9 @@ export default async function PublicGiveawaysPage() {
                   <p className="mt-1 text-sm text-mist">Status: {g.status}</p>
                   {g.signup_ends_at && (
                     <div className="text-sm text-mist">
-                      <p>Signups close (your time): {new Date(g.signup_ends_at).toLocaleString()}</p>
+                      <p>
+                        Signups close (your time): <LocalDateTime iso={g.signup_ends_at} />
+                      </p>
                       <PublicCountdown targetIso={g.signup_ends_at} label="Ends in" />
                     </div>
                   )}

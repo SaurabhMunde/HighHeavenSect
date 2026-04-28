@@ -53,6 +53,8 @@ export function QuizPlayer({
   const [lobbyToOpen, setLobbyToOpen] = useState(0);
   const [tournamentToStart, setTournamentToStart] = useState(0);
   const [globalLeft, setGlobalLeft] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
   const [existing, setExisting] = useState<{ score: number; max: number } | null>(null);
   const [ranks, setRanks] = useState<RankRow[]>([]);
   const [tournamentJoined, setTournamentJoined] = useState(false);
@@ -65,6 +67,40 @@ export function QuizPlayer({
   const selfPlayerKey = useRef<string>("");
   const saveOnce = useRef(false);
   const isSimulationRun = simulation;
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const lastQuestionBeepRef = useRef<number>(-1);
+  const lastLobbyBeepRef = useRef<number>(-1);
+
+  function playBeep({
+    frequency = 780,
+    durationMs = 90,
+  }: {
+    frequency?: number;
+    durationMs?: number;
+  }) {
+    if (!soundOn || typeof window === "undefined") return;
+    const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new Ctx();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = frequency;
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
+    osc.start(now);
+    osc.stop(now + durationMs / 1000 + 0.02);
+  }
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -174,20 +210,38 @@ export function QuizPlayer({
   useEffect(() => {
     if (!joinDeadline || phase !== "name" || !tournamentJoined || !isTournament) return;
     const id = setInterval(() => {
-      setTournamentToStart(
-        Math.max(0, Math.floor((new Date(joinDeadline).getTime() - Date.now()) / 1000)),
+      const secs = Math.max(
+        0,
+        Math.floor((new Date(joinDeadline).getTime() - Date.now()) / 1000),
       );
+      setTournamentToStart(secs);
     }, 200);
     return () => clearInterval(id);
   }, [joinDeadline, phase, tournamentJoined, isTournament]);
 
   useEffect(() => {
     if (!isTournament || phase !== "name" || !tournamentJoined) return;
-    if (joinClosed) {
+    if (joinClosed || tournamentToStart <= 0) {
       questionStartedAt.current = Date.now();
+      setAnswered(false);
       setPhase("question");
     }
-  }, [isTournament, phase, tournamentJoined, joinClosed]);
+  }, [isTournament, phase, tournamentJoined, joinClosed, tournamentToStart]);
+
+  useEffect(() => {
+    if (phase !== "question" || secondsLeft <= 0 || secondsLeft > 3) return;
+    if (lastQuestionBeepRef.current === secondsLeft) return;
+    lastQuestionBeepRef.current = secondsLeft;
+    playBeep({ frequency: 720 + secondsLeft * 60, durationMs: 100 });
+  }, [phase, secondsLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!(isTournament && phase === "name" && tournamentJoined)) return;
+    if (tournamentToStart <= 0 || tournamentToStart > 3) return;
+    if (lastLobbyBeepRef.current === tournamentToStart) return;
+    lastLobbyBeepRef.current = tournamentToStart;
+    playBeep({ frequency: 560 + tournamentToStart * 80, durationMs: 80 });
+  }, [isTournament, phase, tournamentJoined, tournamentToStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!quiz || !isTournament) return;
@@ -224,6 +278,8 @@ export function QuizPlayer({
       return;
     }
     setSecondsLeft(quiz.time_limit_seconds);
+    setAnswered(false);
+    lastQuestionBeepRef.current = -1;
     const id = setInterval(() => {
       if (!isSimulationRun && closes && Date.now() >= new Date(closes).getTime()) {
         setPhase("done");
@@ -309,6 +365,7 @@ export function QuizPlayer({
     setErr(null);
     setQIndex(0);
     setScore(0);
+    setAnswered(false);
     if (closes) {
       setGlobalLeft(
         Math.max(0, Math.floor((new Date(closes).getTime() - Date.now()) / 1000)),
@@ -331,6 +388,7 @@ export function QuizPlayer({
       setTournamentJoined(true);
       if (joinClosed || isSimulationRun) {
         questionStartedAt.current = Date.now();
+        setAnswered(false);
         setPhase("question");
       }
       return;
@@ -341,6 +399,8 @@ export function QuizPlayer({
 
   async function pick(i: number) {
     if (!current || !quiz) return;
+    if (answered) return;
+    setAnswered(true);
     if (!isSimulationRun && closes && Date.now() >= new Date(closes).getTime()) {
       setPhase("done");
       return;
@@ -357,7 +417,7 @@ export function QuizPlayer({
       setScore(nextScore);
       const s = createClient();
       const key = getOrCreatePlayerKey();
-      await s.from("quiz_tournament_answers").insert({
+      const { error: insertErr } = await s.from("quiz_tournament_answers").insert({
         quiz_id: quiz.id,
         question_id: current.id,
         player_key: key,
@@ -366,6 +426,9 @@ export function QuizPlayer({
         points,
         response_ms: responseMs,
       });
+      if (insertErr && !/duplicate|unique/i.test(String(insertErr.message))) {
+        setErr(insertErr.message);
+      }
       await s.from("quiz_tournament_sessions").upsert(
         {
           quiz_id: quiz.id,
@@ -381,8 +444,10 @@ export function QuizPlayer({
     if (qIndex + 1 >= questions.length) {
       setPhase("done");
     } else {
-      setQIndex((x) => x + 1);
-      questionStartedAt.current = Date.now();
+      window.setTimeout(() => {
+        setQIndex((x) => x + 1);
+        questionStartedAt.current = Date.now();
+      }, 250);
     }
   }
 
@@ -454,7 +519,16 @@ export function QuizPlayer({
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-center font-display text-2xl text-gold-bright">{quiz.title}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl text-gold-bright">{quiz.title}</h1>
+        <button
+          type="button"
+          onClick={() => setSoundOn((v) => !v)}
+          className="rounded-lg border border-gold/30 px-2.5 py-1 text-xs text-mist hover:text-foreground"
+        >
+          {soundOn ? "Sound: On" : "Sound: Off"}
+        </button>
+      </div>
       {err && <p className="mt-2 text-center text-sm text-red-400">{err}</p>}
       {phase === "lobby" && (
         <div className="mt-8 text-center">
@@ -504,12 +578,17 @@ export function QuizPlayer({
               <p className="text-xs text-mist">Live ranking</p>
               <ol className="mt-2 space-y-1 text-sm">
                 {ranks.slice(0, 6).map((r, idx) => (
-                  <li key={`${r.player_key}-${idx}`} className="flex items-center justify-between">
+                  <motion.li
+                    key={r.player_key}
+                    layout
+                    transition={{ type: "spring", stiffness: 240, damping: 24 }}
+                    className="flex items-center justify-between"
+                  >
                     <span className={r.player_key === selfPlayerKey.current ? "text-gold-bright" : "text-mist"}>
                       #{idx + 1} {r.in_game_name}
                     </span>
                     <span className="text-gold-bright">{r.score}</span>
-                  </li>
+                  </motion.li>
                 ))}
                 {ranks.length === 0 && <li className="text-mist">Waiting for players...</li>}
               </ol>
@@ -591,7 +670,8 @@ export function QuizPlayer({
                   key={i}
                   type="button"
                   onClick={() => pick(i)}
-                  className="block w-full rounded-xl border border-gold/20 bg-void/50 px-3 py-2.5 text-left text-sm text-mist transition hover:border-gold/40 hover:text-foreground"
+                  disabled={answered}
+                  className="block w-full rounded-xl border border-gold/20 bg-void/50 px-3 py-2.5 text-left text-sm text-mist transition hover:border-gold/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-75"
                 >
                   {o}
                 </button>
@@ -602,15 +682,17 @@ export function QuizPlayer({
                 <p className="text-xs text-mist">Live ranking</p>
                 <ol className="mt-2 space-y-1 text-sm">
                   {ranks.slice(0, 8).map((r, idx) => (
-                    <li
-                      key={`${r.player_key}-${idx}`}
+                    <motion.li
+                      key={r.player_key}
+                      layout
+                      transition={{ type: "spring", stiffness: 240, damping: 24 }}
                       className="flex items-center justify-between transition-all duration-300"
                     >
                       <span className={r.player_key === selfPlayerKey.current ? "text-gold-bright" : "text-mist"}>
                         #{idx + 1} {r.in_game_name}
                       </span>
                       <span className="text-gold-bright drop-shadow-[0_0_6px_rgba(237,199,122,0.65)]">{r.score}</span>
-                    </li>
+                    </motion.li>
                   ))}
                 </ol>
               </div>
@@ -631,10 +713,35 @@ export function QuizPlayer({
           {quiz.quiz_type === "tournament" && (
             <div className="mx-auto mt-6 max-w-md rounded-2xl border border-gold/30 bg-card/80 p-4">
               <p className="text-sm text-mist">Tournament leaderboard</p>
+              {ranks.length >= 3 && (
+                <div className="mt-3 grid grid-cols-3 items-end gap-2">
+                  {[1, 0, 2].map((pos) => {
+                    const r = ranks[pos];
+                    if (!r) return <div key={pos} />;
+                    const h = pos === 0 ? "h-24" : pos === 1 ? "h-16" : "h-14";
+                    const medal = pos === 0 ? "🥇" : pos === 1 ? "🥈" : "🥉";
+                    return (
+                      <motion.div
+                        key={r.player_key}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 * pos }}
+                        className={`rounded-xl border border-gold/30 bg-void/50 p-2 text-center ${h}`}
+                      >
+                        <p className="text-sm">{medal}</p>
+                        <p className="truncate text-xs text-gold-bright">{r.in_game_name}</p>
+                        <p className="text-xs text-mist">{r.score}</p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
               <ol className="mt-3 space-y-2">
                 {ranks.map((r, idx) => (
-                  <li
-                    key={`${r.player_key}-${idx}`}
+                  <motion.li
+                    key={r.player_key}
+                    layout
+                    transition={{ type: "spring", stiffness: 240, damping: 24 }}
                     className="flex items-center justify-between rounded-lg bg-void/40 px-3 py-2"
                   >
                     <span
@@ -647,7 +754,7 @@ export function QuizPlayer({
                       {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`} {r.in_game_name}
                     </span>
                     <span className="text-gold-bright">{r.score}</span>
-                  </li>
+                  </motion.li>
                 ))}
               </ol>
             </div>

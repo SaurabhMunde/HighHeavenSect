@@ -31,10 +31,12 @@ export function QuizQuestionEditor({ quizId }: { quizId: string }) {
   async function syncClosesNow(count: number) {
     const { data: meta } = await supabase
       .from("quizzes")
-      .select("opens_at, scheduled_at, time_limit_seconds")
+      .select("opens_at, scheduled_at, closes_at, time_limit_seconds")
       .eq("id", quizId)
       .single();
     if (!meta) return;
+    // Respect admin-set end windows. Only auto-compute close time when missing.
+    if (meta.closes_at) return;
     const o = meta.opens_at || meta.scheduled_at;
     if (!o || count < 1) return;
     const closes = computeClosesAtIso(

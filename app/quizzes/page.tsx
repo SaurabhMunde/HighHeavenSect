@@ -4,7 +4,7 @@ import { WuxiaShell } from "@/components/layout";
 import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/env";
-import { PublicCountdown } from "@/components/community";
+import { LocalDateTime, PublicCountdown, TimeAutoRefresh } from "@/components/community";
 import { isExpired, isNotYetOpen } from "@/lib/quiz-times";
 import { statusLabel } from "@/lib/quiz-meta";
 
@@ -95,9 +95,10 @@ export default async function PublicQuizzesPage() {
           const canEnter =
             q.status !== "ended" &&
             ((isScheduled && inScheduledWindow) || (isLive && liveWindowOpen));
+          const hasStarted = !!openAt && !isNotYetOpen(openAt);
           const done =
             q.status === "ended" ||
-            ((isLive || isScheduled) && q.closes_at && isExpired(q.closes_at));
+            ((isLive || isScheduled) && q.closes_at && isExpired(q.closes_at) && (!openAt || hasStarted));
           return (
             <Card key={q.id} delay={0.04 * i}>
               <h2 className="font-display text-lg text-gold-bright">{q.title}</h2>
@@ -106,12 +107,12 @@ export default async function PublicQuizzesPage() {
               </p>
               {openAt && (
                 <p className="text-xs text-mist">
-                  Opens (your time): {new Date(openAt).toLocaleString()}
+                  Opens (your time): <LocalDateTime iso={openAt} />
                 </p>
               )}
               {q.closes_at && (
                 <p className="text-xs text-mist">
-                  Room closes (your time): {new Date(q.closes_at).toLocaleString()}
+                  Room closes (your time): <LocalDateTime iso={q.closes_at} />
                 </p>
               )}
               {openAt && (q.status === "scheduled" || q.status === "live") && isNotYetOpen(openAt) && (
@@ -119,6 +120,8 @@ export default async function PublicQuizzesPage() {
                   <PublicCountdown targetIso={openAt} label="Starts in" />
                 </div>
               )}
+              <TimeAutoRefresh targetIso={openAt} />
+              <TimeAutoRefresh targetIso={q.closes_at} />
               <p className="mt-2 font-mono text-sm text-gold">Code: {q.join_code}</p>
               {canEnter && (
                 <Link
