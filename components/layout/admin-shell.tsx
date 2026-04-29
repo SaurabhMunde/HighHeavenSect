@@ -8,6 +8,7 @@ import { AdminSignOut } from "@/components/admin";
 const links = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/events", label: "Events" },
+  { href: "/admin/gallery", label: "Gallery" },
   { href: "/admin/quiz", label: "Quiz" },
   { href: "/admin/quiz-simulation", label: "Simulation" },
   { href: "/admin/leaderboard", label: "Leaderboard" },

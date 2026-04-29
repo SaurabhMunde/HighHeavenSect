@@ -1,3 +1,5 @@
+import { STORAGE_ASSETS } from "@/lib/storage-public";
+
 export type LeaderProfile = {
   name: string;
   role: string;
@@ -9,57 +11,57 @@ export const LEADERSHIP: LeaderProfile[] = [
   {
     name: "Demonsau",
     role: "Sect Leader",
-    image: "/leadership/demonsau.png",
+    image: STORAGE_ASSETS.leadership.demonsau,
   },
   {
     name: "Linqi",
     role: "Vice Leader",
-    image: "/leadership/linqi.png",
+    image: STORAGE_ASSETS.leadership.linqi,
   },
   {
     name: "Ray",
     role: "Officer (RayAsher)",
-    image: "/leadership/ray-asher.png",
+    image: STORAGE_ASSETS.leadership.rayAsher,
   },
   {
     name: "Beleriand",
     role: "Officer",
-    image: "/leadership/beleriand.png",
+    image: STORAGE_ASSETS.leadership.beleriand,
   },
   {
     name: "Noa",
     role: "Officer (Flourish)",
-    image: "/leadership/flourish.png",
+    image: STORAGE_ASSETS.leadership.flourish,
   },
   {
     name: "Skeng (Firefly)",
     role: "Officer (Skengk)",
-    image: "/leadership/skeng.png",
+    image: STORAGE_ASSETS.leadership.skeng,
   },
   {
     name: "Sylvely",
     role: "PvP Lead",
-    image: "/leadership/sylvely.png",
+    image: STORAGE_ASSETS.leadership.sylvely,
     note: "One of the guild’s strongest duelists",
   },
   {
     name: "Yami",
     role: "Recruiter & Admin",
-    image: "/leadership/yami.png",
+    image: STORAGE_ASSETS.leadership.yami,
   },
   {
     name: "James Venom",
     role: "Grand Elder (Jamun)",
-    image: "/leadership/james-venom.png",
+    image: STORAGE_ASSETS.leadership.jamesVenom,
   },
   {
     name: "Sayaka",
     role: "Grand Elder (Sayaka-)",
-    image: "/leadership/sayaka.png",
+    image: STORAGE_ASSETS.leadership.sayaka,
   },
   {
     name: "Re:shanto",
     role: "Grand Elder (CheungMyung)",
-    image: "/leadership/shanto.png",
+    image: STORAGE_ASSETS.leadership.shanto,
   },
 ];

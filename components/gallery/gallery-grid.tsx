@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { GALLERY_SHOTS } from "@/lib/gallery-shots";
 import type { GalleryShot } from "@/lib/gallery-shots";
 import { GalleryImageCard } from "./gallery-image-card";
 import { GalleryPreviewModal } from "./gallery-preview-modal";
 
-export function GalleryGrid() {
+export function GalleryGrid({ shots }: { shots: GalleryShot[] }) {
   const [preview, setPreview] = useState<GalleryShot | null>(null);
 
   const closePreview = useCallback(() => {
@@ -16,9 +15,9 @@ export function GalleryGrid() {
   return (
     <>
       <div className="grid gap-6 sm:grid-cols-2">
-        {GALLERY_SHOTS.map((s, i) => (
+        {shots.map((s, i) => (
           <GalleryImageCard
-            key={s.src}
+            key={`${s.src}-${i}`}
             shot={s}
             index={i}
             isPreviewOpen={preview?.src === s.src}

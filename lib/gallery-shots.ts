@@ -1,7 +1,25 @@
-export const GALLERY_SHOTS = [
-  { src: "/gallery/group-pic-1.png", title: "Guild snapshot", w: 1200, h: 800 },
-  { src: "/gallery/group-pic-2.png", title: "Sect in the jianghu", w: 1200, h: 800 },
-  { src: "/gallery/leader-pic.png", title: "Leadership moment", w: 1200, h: 800 },
-] as const;
+import { STORAGE_ASSETS } from "@/lib/storage-public";
 
-export type GalleryShot = (typeof GALLERY_SHOTS)[number];
+export type GalleryShot = {
+  src: string;
+  title: string;
+  w: number;
+  h: number;
+  caption?: string;
+  uploadedBy?: string;
+};
+
+export const GALLERY_SHOTS: GalleryShot[] = [
+  {
+    src: STORAGE_ASSETS.gallerySeedOne,
+    title: "Guild snapshot",
+    w: 1200,
+    h: 800,
+  },
+  {
+    src: STORAGE_ASSETS.gallerySeedTwo,
+    title: "Sect in the jianghu",
+    w: 1200,
+    h: 800,
+  },
+];

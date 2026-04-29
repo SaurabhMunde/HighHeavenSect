@@ -48,7 +48,11 @@ export function GalleryPreviewModal({ shot, onClose }: Props) {
           height={shot.h}
           className="h-auto max-h-[min(86vh,900px)] w-full object-contain shadow-2xl ring-1 ring-gold/30"
         />
-        <p className="mt-2 text-center text-sm text-foreground/90">{shot.title}</p>
+        <div className="mt-2 text-center">
+          <p className="text-sm text-foreground/90">{shot.title}</p>
+          {shot.caption && <p className="mt-1 text-xs text-mist">{shot.caption}</p>}
+          {shot.uploadedBy && <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-gold/80">Shared by {shot.uploadedBy}</p>}
+        </div>
       </div>
     </div>,
     document.body

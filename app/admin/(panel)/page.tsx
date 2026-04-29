@@ -3,6 +3,7 @@ import { Card } from "@/components/ui";
 
 const tiles = [
   { href: "/admin/events", title: "Event manager", blurb: "Add, edit, and remove sect events." },
+  { href: "/admin/gallery", title: "Gallery moderation", blurb: "Approve or reject member screenshot submissions." },
   { href: "/admin/quiz", title: "Quiz manager", blurb: "Kahoot-style quizzes, timers, and schedule." },
   { href: "/admin/quiz-simulation", title: "Quiz simulation", blurb: "Run admin-only simulations before going live." },
   { href: "/admin/leaderboard", title: "Leaderboard", blurb: "Update member contribution totals." },

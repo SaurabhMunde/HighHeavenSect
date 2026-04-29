@@ -2,9 +2,10 @@ import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { GuildLogDock } from "./guild-log-dock";
 import { CherryBlossomOverlay } from "./cherry-blossom-overlay";
+import { STORAGE_ASSETS } from "@/lib/storage-public";
 
 const publicBackground = {
-  src: "/CelestialHighHeavenSect.png",
+  src: STORAGE_ASSETS.siteBackground,
   imageOpacity: "opacity-[0.3]",
   imageFilter: "saturate-[1.04] contrast-[0.96] brightness-[1.02]",
   baseOverlay: "from-[#1a2230]/58 via-[#1d2734]/52 to-[#18202c]/66",

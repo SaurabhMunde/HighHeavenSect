@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { STORAGE_ASSETS } from "@/lib/storage-public";
 
 export function HomeHero() {
   return (
@@ -74,7 +75,7 @@ export function HomeHero() {
         >
           <div className="overflow-hidden rounded-2xl border border-gold/20 shadow-card">
             <Image
-              src="/guild-hero.png"
+              src={STORAGE_ASSETS.siteHero}
               alt="HighHeavenSect guild hall"
               width={640}
               height={400}
