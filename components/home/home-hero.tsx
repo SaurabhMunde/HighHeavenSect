@@ -131,7 +131,6 @@ export function HomeHero() {
                   width={1600}
                   height={1000}
                   className="h-auto max-h-[min(84vh,980px)] w-full object-contain shadow-2xl ring-1 ring-gold/30"
-                  priority
                 />
               </div>
             </div>,

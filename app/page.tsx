@@ -5,10 +5,10 @@ import { Card } from "@/components/ui";
 import { getSiteUrl } from "@/lib/site";
 
 const homeDesc =
-  "Join HighHeavenSect — a casual Where Winds Meet (WWM) guild for SEA & English speakers. Site schedule, quizzes, giveaways, recruitment, and Discord.";
+  "Join HighHeavenSect, a casual SEA English Where Winds Meet guild, and walk the Martial Path together. Explore recruitment details, admin updates, events, quizzes, giveaways, and Discord.";
 
 export const metadata: Metadata = {
-  title: "Where Winds Meet (WWM) SEA English guild",
+  title: "HighHeavenSect Martial Path | Recruitment, Admin, WWM SEA Guild",
   description: homeDesc,
   alternates: { canonical: "/" },
   openGraph: {
