@@ -75,22 +75,13 @@ export function isValidDisplayName(input: string) {
   return /^[A-Za-z0-9 _.'()[\]-]{2,50}$/.test(input);
 }
 
-export function sanitizeBaseName(filename: string) {
-  const noExt = filename.replace(/\.[^.]+$/, "");
-  const trimmed = noExt.trim().toLowerCase();
-  const safe = trimmed.replace(/[^a-z0-9_-]+/g, "-").replace(/-+/g, "-");
-  return safe.replace(/^-|-$/g, "") || "upload";
-}
-
-export function buildPendingMediaPath(kind: "gallery_image" | "document", filename: string, extension: string) {
+export function buildPendingMediaPath(kind: "gallery_image" | "document", extension: string) {
   const date = new Date().toISOString().slice(0, 10);
-  const base = sanitizeBaseName(filename);
-  return `${kind}/pending/${date}/${base}-${randomUUID()}.${extension}`;
+  return `${kind}/pending/${date}/${randomUUID()}.${extension}`;
 }
 
-export function buildApprovedMediaPath(kind: "gallery_image" | "document", id: string, filename: string, extension: string) {
-  const base = sanitizeBaseName(filename);
-  return `${kind}/approved/${id}/${base}.${extension}`;
+export function buildApprovedMediaPath(kind: "gallery_image" | "document", id: string, extension: string) {
+  return `${kind}/approved/${id}/${randomUUID()}.${extension}`;
 }
 
 export function hashIp(ip: string) {

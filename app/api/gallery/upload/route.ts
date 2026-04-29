@@ -19,21 +19,48 @@ import {
   normalizeOptionalText,
 } from "@/lib/media-upload";
 
+function fail(
+  status: number,
+  reason: string,
+  details?: string,
+  hint?: string,
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: reason,
+      details,
+      hint,
+    },
+    { status },
+  );
+}
+
 export async function POST(request: Request) {
   if (!assertSameOrigin(request.headers.get("origin"), new URL(request.url).origin)) {
-    return NextResponse.json({ error: "Invalid upload origin." }, { status: 403 });
+    return fail(
+      403,
+      "Upload blocked by origin policy.",
+      "This request did not come from an allowed page origin.",
+      "Refresh the site and submit from the same browser tab.",
+    );
   }
 
   let formData: FormData;
   try {
     formData = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Upload form could not be read." }, { status: 400 });
+    return fail(
+      400,
+      "Could not read upload form data.",
+      "The multipart form payload was invalid or incomplete.",
+      "Try selecting the image again and resubmitting.",
+    );
   }
 
   const honeypot = String(formData.get("website") ?? "").trim();
   if (honeypot) {
-    return NextResponse.json({ error: "Spam check failed." }, { status: 400 });
+    return fail(400, "Spam protection triggered.", "Hidden honeypot field was filled.");
   }
 
   const displayName = normalizeDisplayName(String(formData.get("displayName") ?? ""));
@@ -44,27 +71,32 @@ export async function POST(request: Request) {
   const file = formData.get("file");
 
   if (!displayName || displayName.length > MAX_DISPLAY_NAME_LENGTH || !isValidDisplayName(displayName)) {
-    return NextResponse.json(
-      {
-        error:
-          "Enter a valid in-game name or username (2-50 characters; letters, numbers, spaces, apostrophes, dots, brackets, underscores, and hyphens only).",
-      },
-      { status: 400 },
+    return fail(
+      400,
+      "Invalid username/in-game name.",
+      "Name must be 2-50 chars and can only use letters, numbers, spaces, apostrophes, dots, brackets, underscores, and hyphens.",
     );
   }
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Choose an image before submitting." }, { status: 400 });
+    return fail(400, "No image selected.", "Please choose an image file before submitting.");
   }
 
   if (!(file.type in ALLOWED_IMAGE_MIME_TYPES)) {
-    return NextResponse.json({ error: "Only JPG, PNG, and WEBP images are allowed." }, { status: 400 });
+    return fail(
+      400,
+      "Unsupported file type.",
+      `Received type: ${file.type || "unknown"}. Allowed types: image/jpeg, image/png, image/webp.`,
+    );
   }
 
   if (file.size <= 0 || file.size > MAX_IMAGE_UPLOAD_BYTES) {
-    return NextResponse.json(
-      { error: `Image must be smaller than ${Math.floor(MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024))} MB.` },
-      { status: 400 },
+    return fail(
+      400,
+      "Invalid file size.",
+      `Selected file is ${(file.size / (1024 * 1024)).toFixed(2)} MB. Limit is ${Math.floor(
+        MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024),
+      )} MB.`,
     );
   }
 
@@ -74,14 +106,11 @@ export async function POST(request: Request) {
   try {
     supabase = createAdminClient();
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Server storage is not configured yet.",
-      },
-      { status: 503 },
+    return fail(
+      503,
+      "Upload service is not configured.",
+      error instanceof Error ? error.message : "Missing server storage configuration.",
+      "Ask an admin to verify SUPABASE_SERVICE_ROLE_KEY and restart the server.",
     );
   }
 
@@ -104,25 +133,34 @@ export async function POST(request: Request) {
   ]);
 
   if (recentError || dailyError) {
-    return NextResponse.json({ error: "Upload rate-limit check failed. Try again." }, { status: 500 });
+    return fail(
+      500,
+      "Could not verify upload rate limit.",
+      [recentError?.message, dailyError?.message].filter(Boolean).join(" | "),
+      "Please retry in a moment.",
+    );
   }
 
   if ((recentCount ?? 0) >= MAX_UPLOADS_PER_15_MINUTES) {
-    return NextResponse.json(
-      { error: "Too many uploads from this connection. Please wait 15 minutes and try again." },
-      { status: 429 },
+    return fail(
+      429,
+      "Too many uploads from this connection.",
+      `Limit: ${MAX_UPLOADS_PER_15_MINUTES} uploads per 15 minutes.`,
+      "Please wait about 15 minutes and try again.",
     );
   }
 
   if ((dailyCount ?? 0) >= MAX_UPLOADS_PER_DAY) {
-    return NextResponse.json(
-      { error: "Daily upload limit reached for this connection. Try again tomorrow." },
-      { status: 429 },
+    return fail(
+      429,
+      "Daily upload limit reached.",
+      `Limit: ${MAX_UPLOADS_PER_DAY} uploads per 24 hours from this connection.`,
+      "Please try again tomorrow.",
     );
   }
 
   const extension = inferExtension(file.type);
-  const privatePath = buildPendingMediaPath("gallery_image", file.name || "upload", extension);
+  const privatePath = buildPendingMediaPath("gallery_image", extension);
   const arrayBuffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabase.storage
@@ -133,7 +171,12 @@ export async function POST(request: Request) {
     });
 
   if (uploadError) {
-    return NextResponse.json({ error: `Upload failed: ${uploadError.message}` }, { status: 500 });
+    return fail(
+      500,
+      "Image upload to storage failed.",
+      uploadError.message,
+      "Please retry. If this repeats, contact an admin.",
+    );
   }
 
   const { error: insertError } = await supabase.from("media_uploads").insert({
@@ -155,7 +198,12 @@ export async function POST(request: Request) {
 
   if (insertError) {
     await supabase.storage.from(GALLERY_SUBMISSIONS_BUCKET).remove([privatePath]);
-    return NextResponse.json({ error: `Upload metadata save failed: ${insertError.message}` }, { status: 500 });
+    return fail(
+      500,
+      "Upload metadata could not be saved.",
+      insertError.message,
+      "The uploaded file was rolled back from storage. Please retry.",
+    );
   }
 
   return NextResponse.json({

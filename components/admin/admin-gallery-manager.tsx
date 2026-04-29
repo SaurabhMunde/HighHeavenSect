@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalDismiss } from "@/hooks/use-modal-dismiss";
 import { Card } from "@/components/ui";
 
 type PendingGalleryItem = {
@@ -31,6 +33,14 @@ type ApprovedGalleryItem = {
   height: number | null;
 };
 
+type PreviewItem = {
+  title: string;
+  display_name: string;
+  width: number | null;
+  height: number | null;
+  preview_url: string | null;
+};
+
 function formatBytes(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -49,9 +59,15 @@ export function AdminGalleryManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<PreviewItem | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const pending = useMemo(() => pendingRows, [pendingRows]);
   const approved = useMemo(() => approvedRows, [approvedRows]);
+  const previewOpen = preview !== null;
+  useModalDismiss(previewOpen, () => setPreview(null), { lockBody: true });
+
+  useEffect(() => setMounted(true), []);
 
   async function review(id: string, action: "approve" | "reject") {
     setBusyId(id);
@@ -99,6 +115,33 @@ export function AdminGalleryManager({
     }
   }
 
+  async function viewApprovedImage(row: ApprovedGalleryItem) {
+    setBusyId(row.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/gallery/${row.id}/view`, { method: "GET" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        previewUrl?: string;
+      };
+      if (!res.ok || !data.previewUrl) {
+        setError(data.error ?? "Could not load image preview.");
+        return;
+      }
+      setPreview({
+        title: row.title,
+        display_name: row.display_name,
+        width: row.width,
+        height: row.height,
+        preview_url: data.previewUrl,
+      });
+    } catch (unknown) {
+      setError(unknown instanceof Error ? unknown.message : "Could not load image preview.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -122,13 +165,23 @@ export function AdminGalleryManager({
               <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-gold/20 bg-void/45">
                   {row.preview_url ? (
-                    <Image
-                      src={row.preview_url}
-                      alt={row.title || `Pending upload from ${row.display_name}`}
-                      fill
-                      className="object-cover"
-                      sizes="260px"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setPreview(row)}
+                      className="group relative block h-full w-full"
+                      aria-label={`Preview full image: ${row.title || row.display_name}`}
+                    >
+                      <Image
+                        src={row.preview_url}
+                        alt={row.title || `Pending upload from ${row.display_name}`}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.01]"
+                        sizes="260px"
+                      />
+                      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 py-1 text-[11px] text-mist">
+                        Click to preview full image
+                      </span>
+                    </button>
                   ) : (
                     <div className="flex h-full items-center justify-center px-4 text-center text-sm text-mist">
                       Preview unavailable. The file is still stored privately and can still be approved or rejected.
@@ -200,14 +253,24 @@ export function AdminGalleryManager({
                         {row.width && row.height ? ` · ${row.width}×${row.height}` : ""}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      disabled={busyId === row.id}
-                      onClick={() => deleteImage(row.id)}
-                      className="shrink-0 rounded-lg border border-red-400/40 px-2.5 py-1.5 text-xs font-semibold text-red-300 transition hover:border-red-300/60 hover:text-red-200 disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex shrink-0 gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        onClick={() => viewApprovedImage(row)}
+                        className="rounded-lg border border-gold/35 px-2.5 py-1.5 text-xs font-semibold text-gold transition hover:border-gold/60 hover:text-gold-bright disabled:opacity-50"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        onClick={() => deleteImage(row.id)}
+                        className="rounded-lg border border-red-400/40 px-2.5 py-1.5 text-xs font-semibold text-red-300 transition hover:border-red-300/60 hover:text-red-200 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -215,6 +278,45 @@ export function AdminGalleryManager({
           </Card>
         </section>
       </div>
+      {mounted && previewOpen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[450] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+              role="dialog"
+              aria-modal
+              aria-label={preview.title || `Pending upload from ${preview.display_name}`}
+              onClick={() => setPreview(null)}
+            >
+              <div
+                className="relative max-h-[min(88vh,980px)] max-w-[min(96vw,1450px)]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm text-mist">
+                    {preview.title || "Untitled submission"} · by {preview.display_name}
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-md border border-mist/30 bg-void/60 px-3 py-1.5 text-sm text-mist transition hover:text-foreground"
+                    onClick={() => setPreview(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+                {preview.preview_url ? (
+                  <Image
+                    src={preview.preview_url}
+                    alt={preview.title || `Pending upload from ${preview.display_name}`}
+                    width={preview.width && preview.width > 0 ? preview.width : 1600}
+                    height={preview.height && preview.height > 0 ? preview.height : 1000}
+                    className="h-auto max-h-[min(84vh,980px)] w-full object-contain shadow-2xl ring-1 ring-gold/30"
+                  />
+                ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

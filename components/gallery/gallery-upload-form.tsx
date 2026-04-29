@@ -1,6 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  MAX_DISPLAY_NAME_LENGTH,
+  MAX_IMAGE_UPLOAD_BYTES,
+  isValidDisplayName,
+} from "@/lib/media-upload";
 
 const MAX_IMAGE_MB = 8;
 
@@ -23,6 +29,26 @@ export function GalleryUploadForm() {
     try {
       if (!file) {
         setError("Choose an image before submitting.");
+        return;
+      }
+      if (!displayName.trim()) {
+        setError("Enter your in-game name / username.");
+        return;
+      }
+      if (!isValidDisplayName(displayName.trim())) {
+        setError(
+          `Invalid username. Use 2-${MAX_DISPLAY_NAME_LENGTH} characters with letters, numbers, spaces, apostrophes, dots, brackets, underscores, or hyphens.`,
+        );
+        return;
+      }
+      if (!(file.type in ALLOWED_IMAGE_MIME_TYPES)) {
+        setError(`Unsupported file type: ${file.type || "unknown"}. Allowed: JPG, PNG, WEBP.`);
+        return;
+      }
+      if (file.size <= 0 || file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setError(
+          `File size is ${(file.size / (1024 * 1024)).toFixed(2)} MB. Limit is ${MAX_IMAGE_MB} MB.`,
+        );
         return;
       }
 
@@ -54,10 +80,20 @@ export function GalleryUploadForm() {
         body: formData,
       });
 
-      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        details?: string;
+        hint?: string;
+        message?: string;
+      };
 
       if (!res.ok) {
-        setError(data.error ?? "Upload failed.");
+        const statusHint = res.status === 429 ? " (rate limit)" : "";
+        setError(
+          [data.error ?? `Upload failed${statusHint}.`, data.details, data.hint]
+            .filter(Boolean)
+            .join(" "),
+        );
         return;
       }
 
@@ -70,7 +106,15 @@ export function GalleryUploadForm() {
       setFile(null);
       formRef.current?.reset();
     } catch (unknown) {
-      setError(unknown instanceof Error ? unknown.message : "Upload failed.");
+      const msg = unknown instanceof Error ? unknown.message : "Upload failed.";
+      const likelyNetwork =
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("networkerror");
+      setError(
+        likelyNetwork
+          ? "Could not reach upload server (network error). Check connection and try again."
+          : msg,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -126,6 +170,10 @@ export function GalleryUploadForm() {
           className="block w-full rounded-lg border border-dashed border-gold/30 bg-void/65 px-3 py-2 text-sm text-mist file:mr-3 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-void hover:border-gold/55"
         />
         <p className="text-xs text-mist/90">JPG, PNG, or WEBP. Max {MAX_IMAGE_MB} MB. Please upload game screenshots only.</p>
+        <p className="text-xs text-mist/80">
+          Ideal dimensions: <span className="text-foreground/90">1600×1200</span> (4:3 ratio). Any 4:3 image (like
+          1200×900 or 1920×1440) will fit best in gallery cards without awkward cropping.
+        </p>
       </label>
       <input
         type="text"

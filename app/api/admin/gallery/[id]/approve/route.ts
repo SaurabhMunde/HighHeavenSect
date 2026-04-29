@@ -57,7 +57,7 @@ export async function POST(
   }
 
   const extension = inferExtension(row.mime_type);
-  const publicPath = buildApprovedMediaPath(row.kind, row.id, row.original_filename, extension);
+  const publicPath = buildApprovedMediaPath(row.kind, row.id, extension);
 
   const { data: fileData, error: downloadError } = await supabase.storage
     .from(row.private_bucket)
