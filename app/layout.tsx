@@ -22,6 +22,9 @@ const defaultDescription =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
   title: {
     default: "HighHeavenSect | WWM guild · SEA English",
     template: "%s | HighHeavenSect",
@@ -40,6 +43,14 @@ export const metadata: Metadata = {
     "wuxia guild",
   ],
   applicationName: "HighHeavenSect",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: ["/icon.svg"],
+    apple: ["/icon.svg"],
+  },
   openGraph: {
     type: "website",
     locale: "en",

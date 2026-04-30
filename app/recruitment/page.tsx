@@ -6,7 +6,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Recruitment",
   description:
-    "How to join HighHeavenSect — a casual Where Winds Meet (WWM) SEA English guild. Discord, officers, and an open gate for fellow wanderers.",
+    "How to join HighHeavenSect, A casual Where Winds Meet (WWM) SEA English guild. Discord, officers, and an open gate for fellow wanderers.",
   alternates: { canonical: "/recruitment" },
 };
 

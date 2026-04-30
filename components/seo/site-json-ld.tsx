@@ -10,6 +10,7 @@ export function SiteJsonLd() {
     name: "HighHeavenSect",
     alternateName: ["High Heaven Sect", "HighHeavenSect guild"],
     url,
+    logo: `${url}/icon.svg`,
     description:
       "Casual SEA English Where Winds Meet (WWM) guild—community, events, quizzes, and giveaways. Walk the martial path together.",
     sameAs: [DISCORD],
