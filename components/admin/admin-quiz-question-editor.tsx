@@ -31,19 +31,20 @@ export function QuizQuestionEditor({ quizId }: { quizId: string }) {
   async function syncClosesNow(count: number) {
     const { data: meta } = await supabase
       .from("quizzes")
-      .select("opens_at, scheduled_at, closes_at, time_limit_seconds")
+      .select("opens_at, scheduled_at, closes_at, time_limit_seconds, time_per_question_seconds, quiz_type")
       .eq("id", quizId)
       .single();
     if (!meta) return;
+    if ((meta as { quiz_type?: string }).quiz_type === "tournament") return;
     // Respect admin-set end windows. Only auto-compute close time when missing.
     if (meta.closes_at) return;
     const o = meta.opens_at || meta.scheduled_at;
     if (!o || count < 1) return;
-    const closes = computeClosesAtIso(
-      o,
-      meta.time_limit_seconds,
-      count,
-    );
+    const perQ =
+      (meta as { time_per_question_seconds?: number | null }).time_per_question_seconds ??
+      meta.time_limit_seconds ??
+      20;
+    const closes = computeClosesAtIso(o, perQ, count);
     if (closes) {
       await supabase
         .from("quizzes")

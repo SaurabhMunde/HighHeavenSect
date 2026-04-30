@@ -29,10 +29,12 @@ type Quiz = {
   status: string;
 };
 
+type AttemptRow = { in_game_name: string; score: number; max_score: number };
+
 export default async function PublicQuizzesPage() {
   let rows: Quiz[] = [];
-  const winners: Record<string, { in_game_name: string; score: number; max_score: number } | null> =
-    {};
+  const winners: Record<string, AttemptRow | null> = {};
+  const trialTopThree: Record<string, AttemptRow[]> = {};
 
   if (hasSupabase()) {
     const supabase = await createClient();
@@ -46,18 +48,26 @@ export default async function PublicQuizzesPage() {
       .order("created_at", { ascending: false });
     rows = (data ?? []) as Quiz[];
     for (const q of rows) {
-      const { data: best } = await supabase
-        .from("quiz_attempts")
-        .select("in_game_name, score, max_score")
-        .eq("quiz_id", q.id)
-        .order("score", { ascending: false })
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (best) {
-        winners[q.id] = best as { in_game_name: string; score: number; max_score: number };
+      if (q.quiz_type === "trial") {
+        const { data: top3 } = await supabase
+          .from("quiz_attempts")
+          .select("in_game_name, score, max_score")
+          .eq("quiz_id", q.id)
+          .order("score", { ascending: false })
+          .order("created_at", { ascending: true })
+          .limit(3);
+        trialTopThree[q.id] = (top3 ?? []) as AttemptRow[];
+        winners[q.id] = trialTopThree[q.id]?.[0] ?? null;
       } else {
-        winners[q.id] = null;
+        const { data: best } = await supabase
+          .from("quiz_attempts")
+          .select("in_game_name, score, max_score")
+          .eq("quiz_id", q.id)
+          .order("score", { ascending: false })
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        winners[q.id] = best ? (best as AttemptRow) : null;
       }
     }
   }
@@ -67,9 +77,9 @@ export default async function PublicQuizzesPage() {
       <div className="mb-8 text-center">
         <h1 className="font-display text-3xl text-gold-bright">Quizzes</h1>
         <p className="mt-2 mx-auto max-w-2xl text-mist">
-          Start and end use your own device time zone. Each quiz stays open only inside its configured
-          start/end window, and closes automatically at the shown room close time. One attempt per
-          browser for each Sect Trial quiz.
+          Times use your device time zone. Sect Trials are open between their start time and room
+          close time; live Heavenly Tournaments sync everyone in lockstep—see each card for what
+          applies. One attempt per browser for each Sect Trial.
         </p>
       </div>
       {!hasSupabase() && (
@@ -110,7 +120,7 @@ export default async function PublicQuizzesPage() {
                   Opens (your time): <LocalDateTime iso={openAt} />
                 </p>
               )}
-              {q.closes_at && (
+              {q.closes_at && q.quiz_type !== "tournament" && (
                 <p className="text-xs text-mist">
                   Room closes (your time): <LocalDateTime iso={q.closes_at} />
                 </p>
@@ -142,7 +152,19 @@ export default async function PublicQuizzesPage() {
               {done && (
                 <div className="mt-3 text-sm text-mist">
                   <p>Quiz closed.</p>
-                  {winners[q.id] && (
+                  {q.quiz_type === "trial" && (trialTopThree[q.id]?.length ?? 0) > 0 && (
+                    <div className="mt-2 text-foreground">
+                      <p className="font-medium text-gold-bright">Top 3</p>
+                      <ol className="mt-1 list-decimal pl-5">
+                        {(trialTopThree[q.id] ?? []).map((r, idx) => (
+                          <li key={`${idx}-${r.in_game_name}-${r.score}`}>
+                            {r.in_game_name} — {r.score}/{r.max_score}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {q.quiz_type !== "trial" && winners[q.id] && (
                     <p className="mt-1 text-foreground">
                       Top score: {winners[q.id]!.in_game_name} (
                       {winners[q.id]!.score} / {winners[q.id]!.max_score})

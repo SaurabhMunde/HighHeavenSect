@@ -10,12 +10,11 @@ import { Card } from "@/components/ui";
 type Quiz = {
   id: string;
   title: string;
-  time_limit_seconds: number;
+  time_per_question_seconds: number;
   quiz_type: "trial" | "tournament";
-  join_window_seconds: number;
+  waiting_time_seconds: number;
   join_code: string;
-  scheduled_at: string | null;
-  opens_at: string | null;
+  start_time: string | null;
   closes_at: string | null;
   status: string;
 };
@@ -25,11 +24,11 @@ export function QuizList() {
   const [rows, setRows] = useState<Quiz[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [timeLimit, setTimeLimit] = useState(20);
+  const [timePerQuestion, setTimePerQuestion] = useState(20);
   const [quizType, setQuizType] = useState<"trial" | "tournament">("trial");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
-  const [joinWindow, setJoinWindow] = useState(45);
+  const [waitingTime, setWaitingTime] = useState(30);
 
   async function load() {
     setActionError(null);
@@ -47,30 +46,40 @@ export function QuizList() {
 
   async function createQuiz(e: React.FormEvent) {
     e.preventDefault();
-    const openDate = startAt ? new Date(startAt) : null;
-    const closeDate = endAt ? new Date(endAt) : null;
-    // If end is earlier than start, treat it as next-day close (midnight rollover).
-    if (openDate && closeDate && closeDate.getTime() <= openDate.getTime()) {
-      closeDate.setDate(closeDate.getDate() + 1);
+    if (quizType === "trial" && (!startAt || !endAt)) {
+      alert("Sect Trial needs both a start time and an end time (attempt window closes at end).");
+      return;
     }
-    const opens = openDate ? openDate.toISOString() : null;
-    const closes = closeDate ? closeDate.toISOString() : null;
+    const start = startAt ? new Date(startAt).toISOString() : null;
+    let closesAt: string | null = null;
+    if (quizType === "trial" && endAt) {
+      let closeDate = new Date(endAt);
+      const openDate = start ? new Date(start) : null;
+      if (openDate && closeDate.getTime() <= openDate.getTime()) {
+        closeDate = new Date(openDate.getTime() + 60_000);
+      }
+      closesAt = closeDate.toISOString();
+    }
     const { data: authData } = await supabase.auth.getUser();
     const { error } = await supabase.from("quizzes").insert({
       title,
-      time_limit_seconds: timeLimit,
+      time_limit_seconds: timePerQuestion,
+      time_per_question_seconds: timePerQuestion,
       quiz_type: quizType,
-      join_window_seconds: joinWindow,
-      scheduled_at: opens,
-      opens_at: opens,
-      closes_at: closes,
+      waiting_time_seconds: waitingTime,
+      start_time: start,
+      scheduled_at: start,
+      opens_at: start,
+      closes_at: quizType === "trial" ? closesAt : null,
       status: "draft",
     });
     if (!error) {
       const who = authData.user?.email ?? "An officer";
+      const closeNote =
+        quizType === "trial" && closesAt ? ` closes ${new Date(closesAt).toLocaleString()}` : "";
       await logGuildAction(
         supabase,
-        `${who} created quiz “${title}”${opens ? " (opens " + new Date(opens).toLocaleString() + ", local on device)" : ""}.`,
+        `${who} created quiz “${title}”${start ? " (starts " + new Date(start).toLocaleString() + ", local)" : ""}${closeNote}.`,
       );
     } else {
       setActionError(error.message);
@@ -80,7 +89,7 @@ export function QuizList() {
     setQuizType("trial");
     setStartAt("");
     setEndAt("");
-    setJoinWindow(45);
+    setWaitingTime(30);
     load();
   }
 
@@ -102,8 +111,8 @@ export function QuizList() {
               type="number"
               min={5}
               max={120}
-              value={timeLimit}
-              onChange={(e) => setTimeLimit(+e.target.value)}
+              value={timePerQuestion}
+              onChange={(e) => setTimePerQuestion(+e.target.value)}
               className="w-20 rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
             />
           </div>
@@ -127,24 +136,26 @@ export function QuizList() {
               className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-mist">End time</label>
-            <input
-              type="datetime-local"
-              value={endAt}
-              onChange={(e) => setEndAt(e.target.value)}
-              className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
-            />
-          </div>
+          {quizType === "trial" && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-mist">End time</label>
+              <input
+                type="datetime-local"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+                className="rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
+              />
+            </div>
+          )}
           {quizType === "tournament" && (
             <div className="flex items-center gap-2">
-              <label className="text-xs text-mist">Join window (sec)</label>
+              <label className="text-xs text-mist">Waiting time (sec)</label>
               <input
                 type="number"
-                min={30}
+                min={5}
                 max={120}
-                value={joinWindow}
-                onChange={(e) => setJoinWindow(+e.target.value)}
+                value={waitingTime}
+                onChange={(e) => setWaitingTime(+e.target.value)}
                 className="w-20 rounded-lg border border-gold/25 bg-void/80 px-2 py-2 text-sm"
               />
             </div>
@@ -168,15 +179,12 @@ export function QuizList() {
               <div>
                 <h3 className="font-medium text-foreground">{q.title}</h3>
                 <p className="text-xs text-mist">
-                  {q.quiz_type === "tournament" ? "Heavenly Tournament" : "Sect Trial"} · {q.time_limit_seconds}s per question · status: {q.status} ({statusLabel(q.status)})
-                  {q.opens_at
-                    ? ` · opens ${new Date(q.opens_at).toLocaleString()} (local on device when viewing public pages)`
-                    : q.scheduled_at
-                      ? ` · opens ${new Date(q.scheduled_at).toLocaleString()} (local when viewing public pages)`
-                      : ""}
-                  {q.closes_at
-                    ? ` · room closes ${new Date(q.closes_at).toLocaleString()} (auto-closes at this time)`
+                  {q.quiz_type === "tournament" ? "Heavenly Tournament" : "Sect Trial"} · {q.time_per_question_seconds}s per question · status: {q.status} ({statusLabel(q.status)})
+                  {q.start_time ? ` · starts ${new Date(q.start_time).toLocaleString()} (local on device when viewing public pages)` : ""}
+                  {q.quiz_type === "trial" && q.closes_at
+                    ? ` · closes ${new Date(q.closes_at).toLocaleString()} (local)`
                     : ""}
+                  {q.quiz_type === "tournament" ? ` · waiting ${q.waiting_time_seconds}s` : ""}
                 </p>
                 <a
                   href={`/quiz/${q.join_code}`}
