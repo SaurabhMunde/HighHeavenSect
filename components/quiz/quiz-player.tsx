@@ -70,13 +70,13 @@ export function QuizPlayer({
   const lastQuestionBeepRef = useRef<number>(-1);
   const lastLobbyBeepRef = useRef<number>(-1);
 
-  function playBeep({
+  const playBeep = useCallback(({
     frequency = 780,
     durationMs = 90,
   }: {
     frequency?: number;
     durationMs?: number;
-  }) {
+  }) => {
     if (typeof window === "undefined") return;
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
@@ -99,7 +99,7 @@ export function QuizPlayer({
     gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
     osc.start(now);
     osc.stop(now + durationMs / 1000 + 0.02);
-  }
+  }, []);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -232,7 +232,7 @@ export function QuizPlayer({
     if (lastQuestionBeepRef.current === secondsLeft) return;
     lastQuestionBeepRef.current = secondsLeft;
     playBeep({ frequency: 720 + secondsLeft * 60, durationMs: 100 });
-  }, [phase, secondsLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase, secondsLeft, playBeep]);
 
   useEffect(() => {
     if (!(isTournament && phase === "name" && tournamentJoined)) return;
@@ -240,7 +240,7 @@ export function QuizPlayer({
     if (lastLobbyBeepRef.current === tournamentToStart) return;
     lastLobbyBeepRef.current = tournamentToStart;
     playBeep({ frequency: 560 + tournamentToStart * 80, durationMs: 80 });
-  }, [isTournament, phase, tournamentJoined, tournamentToStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isTournament, phase, tournamentJoined, tournamentToStart, playBeep]);
 
   useEffect(() => {
     if (!quiz || !isTournament) return;

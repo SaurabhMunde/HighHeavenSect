@@ -24,7 +24,7 @@ export default async function AdminGalleryPage() {
   const pendingRows = ((pendingData ?? []) as MediaUploadRow[]);
   const approvedRows = ((approvedData ?? []) as MediaUploadRow[]);
 
-  let previewUrls = new Map<string, string>();
+  const previewUrls = new Map<string, string>();
   if (pendingRows.length > 0) {
     try {
       const admin = createAdminClient();

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-let cached: any = null;
+type AdminClient = ReturnType<typeof createClient>;
+let cached: AdminClient | null = null;
 
 export function createAdminClient() {
   if (cached) return cached;
@@ -19,7 +20,7 @@ export function createAdminClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }) as any;
+  });
 
   return cached;
 }
