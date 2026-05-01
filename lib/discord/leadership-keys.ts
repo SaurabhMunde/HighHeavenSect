@@ -16,6 +16,8 @@ function gatherKeysFromLeader(entry: LeaderProfile): Set<string> {
 
   add(entry.name);
 
+  if (entry.ign) add(entry.ign);
+
   const parensFromName = [...entry.name.matchAll(/\(([^)]+)\)/g)].map((m) =>
     m[1].trim(),
   );

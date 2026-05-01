@@ -7,7 +7,7 @@ import { LEADERSHIP } from "@/lib/leadership";
 export const metadata: Metadata = {
   title: "Leadership",
   description:
-    "Sect head, officers, and elders of HighHeavenSect — Where Winds Meet (WWM) SEA English guild leadership.",
+    "Sect head, officers, and elders of HighHeavenSect, Where Winds Meet (WWM) SEA English guild leadership.",
   alternates: { canonical: "/leadership" },
 };
 
@@ -18,10 +18,10 @@ export default function LeadershipPage() {
         <h1 className="font-display text-3xl text-gold-bright">Leadership</h1>
         <p className="mt-2 text-mist">The sect&apos;s pathkeepers</p>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {LEADERSHIP.map((L, i) => (
-          <Card key={L.name} delay={0.05 * i} className="overflow-hidden p-0">
-            <div className="relative aspect-[4/5] w-full bg-void/60">
+          <Card key={L.name} delay={0.05 * i} className="flex h-full flex-col overflow-hidden p-0">
+            <div className="relative aspect-[4/5] w-full shrink-0 bg-void/60">
               <Image
                 src={L.image}
                 alt={L.name}
@@ -30,10 +30,19 @@ export default function LeadershipPage() {
                 sizes="(max-width: 640px) 100vw, 33vw"
               />
             </div>
-            <div className="p-5">
-              <p className="font-display text-lg text-gold-bright">{L.name}</p>
-              <p className="text-sm text-gold">{L.role}</p>
-              {L.note && <p className="mt-2 text-xs text-mist">{L.note}</p>}
+            <div className="flex flex-1 flex-col gap-1 p-4 sm:p-5">
+              <p className="font-display text-base leading-tight text-gold-bright sm:text-lg">
+                {L.name}
+              </p>
+              <p className="text-[13px] leading-snug text-gold">{L.role}</p>
+              <div className="mt-2 flex flex-1 flex-col border-t border-gold/10 pt-2.5">
+                {L.note && (
+                  <p className="text-xs leading-relaxed text-mist/95">{L.note}</p>
+                )}
+                <p className="mt-auto pt-3 text-right text-[10px] leading-snug text-mist/75 sm:text-[11px]">
+                  IGN: {L.ign ?? L.name}
+                </p>
+              </div>
             </div>
           </Card>
         ))}

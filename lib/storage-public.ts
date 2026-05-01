@@ -2,8 +2,17 @@ const DEFAULT_SUPABASE_URL = "https://jroucrqryaxyftpgojan.supabase.co";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const PUBLIC_STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public`;
 
+/**
+ * Bump `NEXT_PUBLIC_STORAGE_ASSETS_VERSION` in Vercel (or `.env.local`) and redeploy when you replace
+ * a file **in-place** in Supabase Storage. Otherwise `next/image` may keep serving a cached optimized
+ * copy for `images.minimumCacheTTL` (see `next.config.ts`).
+ */
 export function publicStorageUrl(bucket: string, objectPath: string) {
-  return `${PUBLIC_STORAGE_BASE}/${bucket}/${objectPath}`;
+  const base = `${PUBLIC_STORAGE_BASE}/${bucket}/${objectPath}`;
+  const ver = process.env.NEXT_PUBLIC_STORAGE_ASSETS_VERSION?.trim();
+  if (!ver) return base;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}v=${encodeURIComponent(ver)}`;
 }
 
 export const STORAGE_ASSETS = {

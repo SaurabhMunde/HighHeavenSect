@@ -4,11 +4,16 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : undefined;
 
+/** Skip `next/image` optimization in dev: the optimizer aborts upstream fetches after 7s, so large PNGs from Storage often time out locally. Production still optimizes on Vercel. */
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["discord.js", "@discordjs/ws", "@discordjs/rest"],
   images: {
+    unoptimized: isDev,
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60 * 60 * 24 * 7,
+    // Remote Supabase objects are often updated in-place; long TTL makes `next/image` sticky on old bytes.
+    minimumCacheTTL: 60 * 60 * 24,
     remotePatterns: supabaseHostname
       ? [
           {
