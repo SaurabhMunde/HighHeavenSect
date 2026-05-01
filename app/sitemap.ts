@@ -10,7 +10,7 @@ const PATHS = [
   "/giveaways",
   "/members",
   "/leadership",
-  "/leaderboard",
+  "/guild-war",
   "/gallery",
 ] as const;
 

@@ -12,7 +12,7 @@ const links = [
   { href: "/admin/gallery", label: "Gallery" },
   { href: "/admin/quiz", label: "Quiz" },
   { href: "/admin/quiz-simulation", label: "Simulation" },
-  { href: "/admin/leaderboard", label: "Leaderboard" },
+  { href: "/admin/guild-war", label: "Guild War" },
   { href: "/admin/giveaways", label: "Giveaways" },
   { href: "/admin/recruitment", label: "Recruitment" },
 ];

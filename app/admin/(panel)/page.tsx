@@ -6,7 +6,11 @@ const tiles = [
   { href: "/admin/gallery", title: "Gallery moderation", blurb: "Approve or reject member screenshot submissions." },
   { href: "/admin/quiz", title: "Quiz manager", blurb: "Kahoot-style quizzes, timers, and schedule." },
   { href: "/admin/quiz-simulation", title: "Quiz simulation", blurb: "Run admin-only simulations before going live." },
-  { href: "/admin/leaderboard", title: "Leaderboard", blurb: "Update member contribution totals." },
+  {
+    href: "/admin/guild-war",
+    title: "Guild war",
+    blurb: "Open signups, Discord blast, and drag-drop raid teams.",
+  },
   { href: "/admin/giveaways", title: "Giveaways", blurb: "Create draws, set rewards, pick winners." },
   { href: "/admin/recruitment", title: "Recruitment", blurb: "Track who brought whom, 5-day activity." },
 ];

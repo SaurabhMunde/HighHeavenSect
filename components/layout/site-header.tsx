@@ -14,7 +14,7 @@ const navItems = [
   { href: "/recruitment", label: "Recruitment" },
   { href: "/gallery", label: "Gallery" },
   { href: "/leadership", label: "Leadership" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/guild-war", label: "Guild War" },
   { href: "/admin", label: "Admin" },
 ] as const;
 
