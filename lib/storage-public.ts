@@ -51,14 +51,6 @@ export const STORAGE_ASSETS = {
     winner: publicStorageUrl("site-assets-public", "site/audio/quiz/winner.wav"),
     celebration: publicStorageUrl("site-assets-public", "site/audio/quiz/celebration.wav"),
   },
-  gallerySeedOne: publicStorageUrl(
-    "gallery-public",
-    "gallery_image/seed/group-pic-1.png",
-  ),
-  gallerySeedTwo: publicStorageUrl(
-    "gallery-public",
-    "gallery_image/seed/group-pic-2.png",
-  ),
   leadership: {
     demonsau: publicStorageUrl("leadership-public", "leadership/demonsau.png"),
     linqi: publicStorageUrl("leadership-public", "leadership/linqi.png"),

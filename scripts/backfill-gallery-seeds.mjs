@@ -2,6 +2,12 @@ import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Legacy helper: historically inserted synthetic `media_uploads` rows for seed PNGs.
+ * Gallery no longer ships hardcoded seeds; keep this script as a no-op unless you
+ * add new default rows deliberately.
+ */
+
 function readEnvValue(key) {
   const envPath = path.resolve(".env.local");
   const text = fs.readFileSync(envPath, "utf8");
@@ -28,34 +34,7 @@ const supabase = createClient(supabaseUrl, serviceRole, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const seeds = [
-  {
-    title: "Guild snapshot",
-    caption: "",
-    display_name: "HighHeavenSect",
-    original_filename: "group-pic-1.png",
-    mime_type: "image/png",
-    size_bytes: 1,
-    private_bucket: "gallery-submissions",
-    private_path: "gallery_image/seed/legacy-group-pic-1.png",
-    public_bucket: "gallery-public",
-    public_path: "gallery_image/seed/group-pic-1.png",
-    status: "approved",
-  },
-  {
-    title: "Sect in the jianghu",
-    caption: "",
-    display_name: "HighHeavenSect",
-    original_filename: "group-pic-2.png",
-    mime_type: "image/png",
-    size_bytes: 1,
-    private_bucket: "gallery-submissions",
-    private_path: "gallery_image/seed/legacy-group-pic-2.png",
-    public_bucket: "gallery-public",
-    public_path: "gallery_image/seed/group-pic-2.png",
-    status: "approved",
-  },
-];
+const seeds = [];
 
 for (const seed of seeds) {
   const { data: existing } = await supabase
@@ -83,3 +62,6 @@ for (const seed of seeds) {
   console.log(`Inserted seed row for ${seed.public_path}`);
 }
 
+if (seeds.length === 0) {
+  console.log("No gallery seeds configured — nothing to backfill.");
+}

@@ -83,19 +83,6 @@ const bgmSourceForUpload = fs.existsSync(bgmUserFile)
   : path.join(__dirname, "seeds", "ai-bgm.mp3");
 
 const uploads = [
-  // gallery seeds (sources under public/gallery — optional when only syncing BGM)
-  {
-    bucket: "gallery-public",
-    src: path.join(webRoot, "public/gallery/group-pic-1.png"),
-    dest: "gallery_image/seed/group-pic-1.png",
-    contentType: "image/png",
-  },
-  {
-    bucket: "gallery-public",
-    src: path.join(webRoot, "public/gallery/group-pic-2.png"),
-    dest: "gallery_image/seed/group-pic-2.png",
-    contentType: "image/png",
-  },
   // site images
   {
     bucket: "site-assets-public",
