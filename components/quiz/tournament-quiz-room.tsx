@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { getOrCreatePlayerKey } from "@/lib/player-key";
+import { STORAGE_ASSETS } from "@/lib/storage-public";
 import { createQuizAmbient, playApplauseBurst } from "@/lib/tournament-quiz-audio";
 
 export type TournamentQuizProps = {
@@ -93,12 +94,13 @@ export function TournamentQuizRoom({ quiz, questions, simulation = false }: Tour
 
   const hydrateAudio = useCallback(() => {
     if (audioRef.current.countdown) return;
-    audioRef.current.countdown = new Audio("/sounds/tick.wav");
-    audioRef.current.correct = new Audio("/sounds/correct.wav");
-    audioRef.current.wrong = new Audio("/sounds/wrong.wav");
-    audioRef.current.leaderboard = new Audio("/sounds/leaderboard.wav");
-    audioRef.current.winner = new Audio("/sounds/winner.wav");
-    const cel = new Audio("/sounds/celebration.wav");
+    const { quizSfx: q } = STORAGE_ASSETS;
+    audioRef.current.countdown = new Audio(q.tick);
+    audioRef.current.correct = new Audio(q.correct);
+    audioRef.current.wrong = new Audio(q.wrong);
+    audioRef.current.leaderboard = new Audio(q.leaderboard);
+    audioRef.current.winner = new Audio(q.winner);
+    const cel = new Audio(q.celebration);
     cel.volume = 0.62;
     cel.addEventListener("error", () => {
       audioRef.current.celebration = null;

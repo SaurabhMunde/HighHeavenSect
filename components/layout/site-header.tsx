@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { SiteBgmToggle } from "./site-bgm-toggle";
+
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/schedule", label: "Schedule" },
@@ -29,13 +31,14 @@ export function SiteHeader() {
             <Link href="/" className="font-display text-lg tracking-wide text-gold-bright">
               HighHeaven<span className="text-mist">Sect</span>
             </Link>
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
               <Link
                 href="/admin"
-                  className="rounded-lg border border-gold/30 px-2.5 py-1 text-mist transition hover:border-gold/55 hover:bg-white/10 hover:text-gold-bright"
+                className="rounded-lg border border-gold/30 px-2.5 py-1 text-mist transition hover:border-gold/55 hover:bg-white/10 hover:text-gold-bright"
               >
                 Admin
               </Link>
+              <SiteBgmToggle />
             </div>
           </div>
 

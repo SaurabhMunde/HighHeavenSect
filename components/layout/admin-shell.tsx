@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminSignOut } from "@/components/admin";
+import { SiteBgmToggle } from "./site-bgm-toggle";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -135,6 +136,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 >
                   {mode === "heavenly" ? "Dark Jade" : "Light Heaven"}
                 </button>
+                <SiteBgmToggle />
                 <AdminSignOut />
               </div>
             </div>

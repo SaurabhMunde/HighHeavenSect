@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cinzel, Noto_Sans } from "next/font/google";
+import { SiteBgmProvider } from "@/components/layout/site-bgm-provider";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
@@ -78,7 +79,7 @@ export default function RootLayout({
         className={`${cinzel.variable} ${noto.variable} min-h-screen bg-void font-sans antialiased`}
       >
         <SiteJsonLd />
-        {children}
+        <SiteBgmProvider>{children}</SiteBgmProvider>
       </body>
     </html>
   );

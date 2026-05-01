@@ -10,11 +10,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:apply": "node scripts/apply-sql.cjs"
+    "db:apply": "node scripts/apply-sql.cjs",
+    "upload-storage": "node scripts/upload-media-to-storage.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
+    "discord.js": "^14.26.3",
     "framer-motion": "^12.38.0",
     "next": "^16.2.4",
     "react": "^19.0.0",

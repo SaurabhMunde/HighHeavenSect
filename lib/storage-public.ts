@@ -12,6 +12,17 @@ export const STORAGE_ASSETS = {
     "site/backgrounds/CelestialHighHeavenSect.png",
   ),
   siteHero: publicStorageUrl("site-assets-public", "site/hero/guild-hero.png"),
+  /** Site-wide BGM — upload MP3 as `site/audio/ai-bgm.mp3` in bucket `site-assets-public`. */
+  siteBgmAudio: publicStorageUrl("site-assets-public", "site/audio/ai-bgm.mp3"),
+  /** Tournament quiz UI — WAVs under `site/audio/quiz/` (see `upload-media-to-storage.mjs`). */
+  quizSfx: {
+    tick: publicStorageUrl("site-assets-public", "site/audio/quiz/tick.wav"),
+    correct: publicStorageUrl("site-assets-public", "site/audio/quiz/correct.wav"),
+    wrong: publicStorageUrl("site-assets-public", "site/audio/quiz/wrong.wav"),
+    leaderboard: publicStorageUrl("site-assets-public", "site/audio/quiz/leaderboard.wav"),
+    winner: publicStorageUrl("site-assets-public", "site/audio/quiz/winner.wav"),
+    celebration: publicStorageUrl("site-assets-public", "site/audio/quiz/celebration.wav"),
+  },
   gallerySeedOne: publicStorageUrl(
     "gallery-public",
     "gallery_image/seed/group-pic-1.png",
