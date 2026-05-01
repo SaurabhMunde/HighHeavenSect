@@ -16,8 +16,10 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { GuildWarDutyKey } from "@/lib/guild-war";
 import { GUILD_WAR_DUTY_LABEL, dutyIcon } from "@/lib/guild-war";
@@ -79,6 +81,22 @@ const formationDropAnimation: DropAnimation = {
   easing: "cubic-bezier(0.25, 1, 0.5, 1)",
 };
 
+/** Shared inner markup so DragOverlay pixels match draggable chips — mismatched heights cause pointer/preview drift. */
+function SignupChipFace({ signup }: { signup: SignupRow }) {
+  return (
+    <>
+      <span className="mr-1">{dutyIcon(signup.duty_role)}</span>
+      <span>{signup.participant_name}</span>
+      <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-[#7dd3b0]/85">
+        {GUILD_WAR_DUTY_LABEL[signup.duty_role]}
+      </span>
+    </>
+  );
+}
+
+const draggableChipClasses =
+  "touch-manipulation cursor-grab select-none rounded-lg border-2 border-[#4a9269]/72 bg-[#0c1613] px-2.5 py-2 text-xs font-semibold text-[#dcfced] shadow-sm hover:border-[#6dcf9c]/92 active:cursor-grabbing";
+
 function DraggableSignup({ signup }: { signup: SignupRow }) {
   const dragId = sigDragId(signup.id);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -86,10 +104,13 @@ function DraggableSignup({ signup }: { signup: SignupRow }) {
     data: { type: "signup", signupId: signup.id },
   });
 
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.2 : 1,
-    touchAction: "none" as const,
+    opacity: isDragging ? 0 : 1,
+    touchAction: "none",
+    /** Layout slot stays; invisible — DragOverlay follows the cursor with snapCenterToCursor */
+    pointerEvents: isDragging ? "none" : "auto",
+    transition: "opacity 80ms ease",
   };
 
   return (
@@ -98,13 +119,9 @@ function DraggableSignup({ signup }: { signup: SignupRow }) {
       style={style}
       {...listeners}
       {...attributes}
-      className="touch-manipulation cursor-grab select-none rounded-lg border-2 border-[#4a9269]/72 bg-[#0c1613] px-2.5 py-2 text-xs font-semibold text-[#dcfced] shadow-sm hover:border-[#6dcf9c]/92 active:cursor-grabbing"
+      className={draggableChipClasses}
     >
-      <span className="mr-1">{dutyIcon(signup.duty_role)}</span>
-      <span>{signup.participant_name}</span>
-      <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-wide text-[#7dd3b0]/85">
-        {GUILD_WAR_DUTY_LABEL[signup.duty_role]}
-      </span>
+      <SignupChipFace signup={signup} />
     </div>
   );
 }
@@ -172,6 +189,9 @@ export function AdminGuildWarConsole() {
   const [note, setNote] = useState<string | null>(null);
   const [activeSig, setActiveSig] = useState<SignupRow | null>(null);
 
+  /** Unsaved formation layout (drag/order/labels) vs Supabase snapshot — poll must not revert until Save. */
+  const teamLayoutDirtyRef = useRef(false);
+
   const loadWars = useCallback(async () => {
     const { data } = await supabase.from("guild_war_events").select("*").order("scheduled_start_at", {
       ascending: false,
@@ -215,9 +235,29 @@ export function AdminGuildWarConsole() {
       }
 
       setTeams((prev) => {
-        if (replaceTeamsFully) return nextTeams;
+        if (replaceTeamsFully) {
+          teamLayoutDirtyRef.current = false;
+          return nextTeams;
+        }
+
         const unsavedFormations = prev.filter((t) => !t.dbId);
-        return [...nextTeams, ...unsavedFormations];
+
+        if (!teamLayoutDirtyRef.current) {
+          return [...nextTeams, ...unsavedFormations];
+        }
+
+        const localBySavedId = new Map<string, { signupIds: string[]; label: string }>();
+        for (const t of prev) {
+          if (!t.dbId) continue;
+          localBySavedId.set(t.dbId, { signupIds: [...t.signupIds], label: t.label });
+        }
+
+        const mergedSaved = nextTeams.map((row) => {
+          const mine = localBySavedId.get(row.dbId as string);
+          return mine === undefined ? row : { ...row, signupIds: mine.signupIds, label: mine.label };
+        });
+
+        return [...mergedSaved, ...unsavedFormations];
       });
     },
     [supabase],
@@ -228,7 +268,12 @@ export function AdminGuildWarConsole() {
   }, [loadWars]);
 
   useEffect(() => {
-    if (selected) void hydrateWar(selected);
+    teamLayoutDirtyRef.current = false;
+    if (!selected) {
+      setTeams([]);
+      return;
+    }
+    void hydrateWar(selected, { replaceTeamsFully: true });
   }, [selected, hydrateWar]);
 
   /** Live roster when this board is open — public signups & formation saves refresh here */
@@ -332,6 +377,7 @@ export function AdminGuildWarConsole() {
   }
 
   function addBlankTeam() {
+    teamLayoutDirtyRef.current = true;
     setTeams((prev) => [
       ...prev,
       {
@@ -343,6 +389,7 @@ export function AdminGuildWarConsole() {
   }
 
   function removeTeam(idx: number) {
+    teamLayoutDirtyRef.current = true;
     setTeams((prev) => prev.filter((_, i) => i !== idx));
   }
 
@@ -405,6 +452,7 @@ export function AdminGuildWarConsole() {
     }
 
     if (dest === POOL_ID) {
+      teamLayoutDirtyRef.current = true;
       setTeams(next);
       return;
     }
@@ -415,6 +463,7 @@ export function AdminGuildWarConsole() {
     const formation = next.find((t) => t.draftId === formationDraftId);
     if (!formation) return;
     if (!formation.signupIds.includes(signupId)) formation.signupIds.push(signupId);
+    teamLayoutDirtyRef.current = true;
     setTeams(next);
   }
 
@@ -527,10 +576,11 @@ export function AdminGuildWarConsole() {
         <DndContext
           sensors={sensors}
           collisionDetection={formationCollisionDetection}
+          modifiers={[snapCenterToCursor]}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <section className="space-y-4 rounded-3xl border border-emerald-200/54 bg-black/71 p-4 shadow-[inset_0_1px_0_rgba(255,246,237,0.08)] backdrop-blur">
+          <section className="space-y-4 overflow-visible rounded-3xl border border-emerald-200/54 bg-black/71 p-4 shadow-[inset_0_1px_0_rgba(255,246,237,0.08)] backdrop-blur">
             <div className="flex flex-wrap gap-4">
               <button
                 type="button"
@@ -569,13 +619,14 @@ export function AdminGuildWarConsole() {
                       <div className="flex w-full items-center gap-2">
                         <input
                           value={t.label}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            teamLayoutDirtyRef.current = true;
                             setTeams((prev) =>
                               prev.map((item, i) =>
                                 i === idx ? { ...item, label: e.target.value } : item,
                               ),
-                            )
-                          }
+                            );
+                          }}
                           className="flex-1 rounded-lg border border-gold/30 bg-black/73 px-2 py-1 text-[0.95rem] font-display text-emerald-100"
                           onMouseDown={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
@@ -606,9 +657,10 @@ export function AdminGuildWarConsole() {
 
             <DragOverlay zIndex={500} dropAnimation={formationDropAnimation}>
               {activeSig ? (
-                <div className="cursor-grabbing rounded-lg border-2 border-emerald-400/90 bg-[#0c1613] px-3 py-2 text-xs font-semibold text-[#dcfced] shadow-2xl ring-2 ring-emerald-500/35">
-                  <span className="mr-1">{dutyIcon(activeSig.duty_role)}</span>
-                  {activeSig.participant_name}
+                <div
+                  className={`${draggableChipClasses} cursor-grabbing border-emerald-400/90 shadow-2xl ring-2 ring-emerald-500/35`}
+                >
+                  <SignupChipFace signup={activeSig} />
                 </div>
               ) : null}
             </DragOverlay>
