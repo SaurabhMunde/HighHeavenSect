@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { WuxiaShell } from "@/components/layout";
-import { HomeHero } from "@/components/home";
+import { HomeHero, HomeSeasonHighlights } from "@/components/home";
 import { Card } from "@/components/ui";
 import { getSiteUrl } from "@/lib/site";
 
@@ -35,6 +35,7 @@ export default function HomePage() {
     <WuxiaShell>
       <div className="space-y-10">
         <HomeHero />
+        <HomeSeasonHighlights />
         <div className="flex flex-col items-center gap-3 text-center animate-fade-in">
           <ProsperityBadge />
           <p className="text-sm text-mist">Guild hall milestone</p>

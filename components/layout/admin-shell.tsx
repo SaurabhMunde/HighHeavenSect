@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminSignOut } from "@/components/admin";
+import { GuildLogDock } from "./guild-log-dock";
 import { SiteBgmToggle } from "./site-bgm-toggle";
 
 const links = [
@@ -170,6 +171,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      <GuildLogDock />
     </div>
   );
 }

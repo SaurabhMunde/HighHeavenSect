@@ -7,11 +7,13 @@ import type { GalleryShot } from "@/lib/gallery-shots";
 type Props = {
   shot: GalleryShot;
   index: number;
+  /** First grid cells load eagerly for faster LCP; extras use native lazy loading. */
+  eagerImage?: boolean;
   isPreviewOpen: boolean;
   onToggle: () => void;
 };
 
-export function GalleryImageCard({ shot, index, isPreviewOpen, onToggle }: Props) {
+export function GalleryImageCard({ shot, index, eagerImage = false, isPreviewOpen, onToggle }: Props) {
   return (
     <Card
       delay={0.04 * index}
@@ -29,6 +31,8 @@ export function GalleryImageCard({ shot, index, isPreviewOpen, onToggle }: Props
             src={shot.src}
             alt={shot.title}
             fill
+            priority={eagerImage}
+            loading={eagerImage ? "eager" : "lazy"}
             className={`object-cover transition duration-300 ${
               isPreviewOpen ? "scale-[1.02] md:scale-100" : ""
             }`}

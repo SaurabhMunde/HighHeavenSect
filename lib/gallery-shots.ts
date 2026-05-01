@@ -1,6 +1,8 @@
 import { STORAGE_ASSETS } from "@/lib/storage-public";
 
 export type GalleryShot = {
+  /** Present for DB-backed rows — stable React keys */
+  id?: string;
   src: string;
   title: string;
   w: number;

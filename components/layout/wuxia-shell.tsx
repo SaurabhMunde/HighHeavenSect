@@ -1,6 +1,5 @@
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
-import { GuildLogDock } from "./guild-log-dock";
 import { CherryBlossomOverlay } from "./cherry-blossom-overlay";
 import { STORAGE_ASSETS } from "@/lib/storage-public";
 
@@ -47,7 +46,6 @@ export function WuxiaShell({
           </div>
         </main>
         <SiteFooter />
-        <GuildLogDock />
       </div>
     </div>
   );
