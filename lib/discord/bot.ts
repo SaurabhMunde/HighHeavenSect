@@ -7,7 +7,8 @@ import {
 } from "discord.js";
 
 import { getDiscordEnv } from "@/lib/discord/env";
-import { lookupInGameName } from "@/lib/discord/ingame-map";
+import { getEffectiveMemberRows, lookupInGameName } from "@/lib/discord/ingame-map";
+import { refreshInGameMapFromDiscordWithCache } from "@/lib/discord/roster-sync";
 import { matchesSiteLeadershipRoster } from "@/lib/discord/leadership-keys";
 import type {
   DiscordMemberApiRow,
@@ -17,7 +18,7 @@ import type {
   RosterMappingEligibleNoIgnRow,
   RosterMappingOrphanMemberRow,
 } from "@/lib/discord/types";
-import { MEMBERS } from "@/lib/members";
+import type { Member } from "@/lib/members";
 
 declare global {
   var __discordRosterLastOnlineMs: Map<string, number> | undefined;
@@ -258,7 +259,6 @@ async function fetchGuildMembersWithBackoff(guild: Guild): Promise<void> {
     } catch (err) {
       if (!isLikelyDiscordRateLimit(err)) throw err;
       const backoff = parseGatewayRetryAfterMs(err) ?? Math.min(2000 * 2 ** attempt, 60_000);
-      console.warn("[discord/roster] member sync rate-limited, retry in %sms", backoff);
       if (attempt === 3) throw err;
       await sleep(backoff);
     }
@@ -394,6 +394,7 @@ export async function fetchDiscordRosterPayload(): Promise<DiscordRosterApiPaylo
     throw new Error("DISCORD_GUILD_ID is not set or empty after trimming.");
 
   const client = await ensureClient();
+  await refreshInGameMapFromDiscordWithCache(client);
 
   const guild =
     client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId));
@@ -407,7 +408,7 @@ export async function fetchDiscordRosterPayload(): Promise<DiscordRosterApiPaylo
       const row = guildMemberToRow(member);
       if (row) rows.push(row);
     } catch {
-      console.error("[discord/roster] skip member serialize err id=%s", member.id);
+      /* skip malformed member */
     }
   }
 
@@ -437,7 +438,7 @@ function memberMapperKeysNormalized(member: GuildMember): string[] {
   return ordered;
 }
 
-function mapperKeysRegisteredForMemberRow(row: (typeof MEMBERS)[number]): string[] {
+function mapperKeysRegisteredForMemberRow(row: Member): string[] {
   const keys = [row.discord, ...(row.discordAliases ?? [])]
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -445,7 +446,7 @@ function mapperKeysRegisteredForMemberRow(row: (typeof MEMBERS)[number]): string
 }
 
 /**
- * Compared live guild (WWM roles) ↔ `members.ts`: who lacks IGN rows, which roster rows never resolve.
+ * Compared live guild (WWM roles) ↔ effective roster rows: who lacks IGN rows, which roster rows never resolve.
  */
 export async function computeRosterMappingDiagnostics(): Promise<{
   rosterLineCount: number;
@@ -459,6 +460,8 @@ export async function computeRosterMappingDiagnostics(): Promise<{
     throw new Error("DISCORD_GUILD_ID is not set or empty after trimming.");
 
   const client = await ensureClient();
+  await refreshInGameMapFromDiscordWithCache(client);
+
   const guild =
     client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId));
 
@@ -504,7 +507,7 @@ export async function computeRosterMappingDiagnostics(): Promise<{
   }
 
   const rosterLinesWithNoMatchingGuildIgn: RosterMappingOrphanMemberRow[] =
-    [...MEMBERS]
+    [...getEffectiveMemberRows()]
       .filter((row) => !matchedInGames.has(row.inGame))
       .sort((a, b) =>
         a.inGame.localeCompare(b.inGame, undefined, { sensitivity: "base" }),
@@ -523,7 +526,7 @@ export async function computeRosterMappingDiagnostics(): Promise<{
   );
 
   return {
-    rosterLineCount: MEMBERS.length,
+    rosterLineCount: getEffectiveMemberRows().length,
     guildEligibleMemberCount,
     guildMembersWithMappedIgnCount: matchedInGames.size,
     eligibleDiscordMembersMissingIgnMapping,

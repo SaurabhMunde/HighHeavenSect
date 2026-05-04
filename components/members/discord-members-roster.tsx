@@ -1,8 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 
+import {
+  fetchDiscordMembersRosterDeduplicated,
+  readDiscordMembersRosterCache,
+} from "@/lib/discord-members-client";
 import type {
   DiscordMemberApiRow,
   DiscordRosterApiPayload,
@@ -58,9 +68,9 @@ function RosterStatsAside({ stats }: { stats: DiscordRosterStats }) {
       </h2>
       <p
         className="mt-0.5 leading-snug text-[10px] text-mist/90 line-clamp-2"
-        title="Updates ~15s. IGN map refreshes after deploy/restart."
+        title="Updates ~15s. Roster list is prefetched in the background on other pages."
       >
-        Refresh ~15s · IGN map follows deploy/restart.
+        Refresh ~15s · roster prefetched while you browse.
       </p>
       <ul className="mt-3 grid grid-cols-2 gap-x-2 gap-y-2.5">
         {items.map((it) => (
@@ -210,21 +220,33 @@ export function DiscordMembersRoster() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useLayoutEffect(() => {
+    const cached = readDiscordMembersRosterCache();
+    if (cached) {
+      setPayload(cached);
+      setLoading(false);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
       setError(null);
 
-      const res = await fetch("/api/discord-members", { cache: "no-store" });
+      const result = await fetchDiscordMembersRosterDeduplicated();
 
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
+      if (!result.ok) {
+        const body = result.body as {
           error?: string;
           hint?: string;
           details?: string;
           code?: number | string;
         };
         const parts = [
-          typeof body.error === "string" ? body.error : `HTTP ${res.status}`,
+          typeof body.error === "string"
+            ? body.error
+            : result.status
+              ? `HTTP ${result.status}`
+              : "Request failed",
           typeof body.hint === "string" ? body.hint : null,
           typeof body.details === "string"
             ? `Technical: ${body.details}${body.code !== undefined ? ` (code ${String(body.code)})` : ""}`
@@ -236,15 +258,11 @@ export function DiscordMembersRoster() {
         return;
       }
 
-      const data = (await res.json()) as DiscordRosterApiPayload;
-      const members =
-        data && typeof data === "object" && Array.isArray(data.members)
-          ? data.members
-          : [];
+      const data = result.payload;
+      const members = Array.isArray(data.members) ? data.members : [];
 
       const statsPayload =
-        data && typeof data === "object" && data.stats &&
-        typeof data.stats.discordWwmMemberRoleCount === "number"
+        data.stats && typeof data.stats.discordWwmMemberRoleCount === "number"
           ? data.stats
           : {
               discordWwmMemberRoleCount: 0,

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * Offline comparison of `members.ts` vs live guild (WWM Head/Member roles only).
+ * Compare effective roster rows vs live guild (WWM Head/Member roles only).
  * Set `DISCORD_ROSTER_DIAGNOSTIC=1` in `.env.local`, restart dev server, GET this URL.
  */
 export async function GET() {

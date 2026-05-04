@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { fetchDiscordMembersRosterDeduplicated } from "@/lib/discord-members-client";
 import { SiteBgmToggle } from "./site-bgm-toggle";
 
 const navItems = [
@@ -52,6 +53,11 @@ export function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onMouseEnter={
+                    item.href === "/members"
+                      ? () => void fetchDiscordMembersRosterDeduplicated()
+                      : undefined
+                  }
                   className={`rounded-lg px-3 py-1.5 transition ${
                     active
                       ? "border border-gold/60 bg-[#ffe4ef]/18 text-gold-bright shadow-[0_0_10px_rgba(217,164,187,0.2)]"

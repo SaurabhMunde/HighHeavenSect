@@ -1,3 +1,4 @@
+import { DiscordMembersPrefetcher } from "./discord-members-prefetcher";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { CherryBlossomOverlay } from "./cherry-blossom-overlay";
@@ -38,6 +39,7 @@ export function WuxiaShell({
         aria-hidden
       />
       <CherryBlossomOverlay />
+      <DiscordMembersPrefetcher />
       <div className="relative z-10 flex min-h-screen flex-col">
         <SiteHeader />
         <main className="mx-auto mb-6 flex w-full max-w-6xl flex-1 flex-col px-4 py-8 md:px-6 md:py-10">

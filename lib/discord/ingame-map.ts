@@ -1,9 +1,9 @@
 import type { GuildMember } from "discord.js";
 
-import { MEMBERS } from "@/lib/members";
+import { EMPTY_ROSTER, type Member } from "@/lib/members";
 
 /** Discord roster name (`discord` + `discordAliases`) → in-game tag. Keys compared case-insensitively. */
-function buildInsensitiveMap(): Map<string, string> {
+function buildInsensitiveMap(rows: readonly Member[]): Map<string, string> {
   const m = new Map<string, string>();
 
   const add = (label: string, inGame: string) => {
@@ -11,14 +11,30 @@ function buildInsensitiveMap(): Map<string, string> {
     if (k.length) m.set(k, inGame);
   };
 
-  for (const row of MEMBERS) {
+  for (const row of rows) {
     add(row.discord, row.inGame);
     for (const alias of row.discordAliases ?? []) add(alias, row.inGame);
   }
   return m;
 }
 
-const INGAME_BY_DISCORD_KEY = buildInsensitiveMap();
+let effectiveRows: Member[] = [...EMPTY_ROSTER];
+let ingameByDiscordKey = buildInsensitiveMap(effectiveRows);
+
+export function applyMemberRows(rows: Member[]): void {
+  effectiveRows = rows;
+  ingameByDiscordKey = buildInsensitiveMap(rows);
+}
+
+export function resetMemberRowsToStatic(): void {
+  effectiveRows = [...EMPTY_ROSTER];
+  ingameByDiscordKey = buildInsensitiveMap(effectiveRows);
+}
+
+/** Rows used for IGN lookup and diagnostics (Discord thread when synced). */
+export function getEffectiveMemberRows(): readonly Member[] {
+  return effectiveRows;
+}
 
 /**
  * Lookup in-game name from member identity.
@@ -37,7 +53,7 @@ export function lookupInGameName(member: GuildMember): string | null {
     const key = raw.trim().toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    const hit = INGAME_BY_DISCORD_KEY.get(key);
+    const hit = ingameByDiscordKey.get(key);
     if (hit) return hit;
   }
   return null;
