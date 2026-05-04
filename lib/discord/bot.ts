@@ -35,6 +35,9 @@ const ROLE_MEMBER = "WWM Member";
 /** Fixed top-3 leadership strip (matches Discord display names, case-insensitive). */
 const FIXED_HEAD_NAMES = ["demonsau", "linqi", "james venom"] as const;
 
+let lastSuccessfulMemberGatewaySyncMs = 0;
+let memberGatewaySyncPromise: Promise<void> | null = null;
+
 function fixedHeadSortIndex(discordDisplayName: string): number {
   const n = discordDisplayName.trim().toLowerCase();
   return FIXED_HEAD_NAMES.indexOf(n as (typeof FIXED_HEAD_NAMES)[number]);
@@ -123,10 +126,10 @@ function computeRosterStats(rows: DiscordMemberApiRow[]): DiscordRosterStats {
   let rosterUnmappedIgnCount = 0;
 
   for (const r of rows) {
-    if (r.discordHasMemberRole) discordWwmMemberRoleCount += 1;
-    if (r.discordHasHeadRole) discordWwmHeadRoleCount += 1;
     if (r.inGameName != null) rosterMappedIgnCount += 1;
     else rosterUnmappedIgnCount += 1;
+    if (r.discordHasMemberRole) discordWwmMemberRoleCount += 1;
+    if (r.discordHasHeadRole) discordWwmHeadRoleCount += 1;
   }
 
   return {
@@ -144,7 +147,7 @@ function getLastOnlineMap(): Map<string, number> {
   return globalThis.__discordRosterLastOnlineMs;
 }
 
-function attachPresenceTracking(client: Client) {
+function attachPresenceTracking(client: Client): void {
   client.removeAllListeners("presenceUpdate");
 
   client.on("presenceUpdate", (_old, neu) => {
@@ -152,105 +155,84 @@ function attachPresenceTracking(client: Client) {
     if (!uid) return;
 
     const s = neu.status;
+    const last = getLastOnlineMap();
 
-    /** Only Discord gateway updates advance this — avoids resetting on each API poll. */
     if (s && s !== "offline") {
-      getLastOnlineMap().set(uid, Date.now());
+      last.set(uid, Date.now());
     }
   });
 }
 
-function isPlayingWhereWindsMeet(member: GuildMember): boolean {
+function primaryActivityLabel(member: GuildMember): string | null {
   const activities = member.presence?.activities ?? [];
-  return activities.some(
-    (a) =>
-      a.type === ActivityType.Playing &&
-      (a.name === WWM_ACTIVITY_SUBSTRING ||
-        a.name.includes(WWM_ACTIVITY_SUBSTRING)),
-  );
+  const playing = activities.find((a) => a.type === ActivityType.Playing && a.name);
+  if (playing?.name) return `Playing ${playing.name}`;
+  const custom = activities.find((a) => a.type === ActivityType.Custom && a.state);
+  if (custom?.state) return custom.state;
+  const listening = activities.find((a) => a.type === ActivityType.Listening && a.name);
+  if (listening?.name) return `Listening to ${listening.name}`;
+  const streaming = activities.find((a) => a.type === ActivityType.Streaming && a.name);
+  if (streaming?.name) return `Streaming ${streaming.name}`;
+  return null;
 }
 
-function primaryActivityLabel(member: GuildMember): string | null {
-  if (isPlayingWhereWindsMeet(member)) return DISPLAY_PLAYING_WWM;
+function isPlayingWhereWindsMeet(member: GuildMember): boolean {
   const activities = member.presence?.activities ?? [];
-  const playing = activities.find((a) => a.type === ActivityType.Playing);
-  if (!playing?.name) return null;
-  return `Playing ${playing.name}`;
+  const needle = WWM_ACTIVITY_SUBSTRING.toLowerCase();
+  for (const a of activities) {
+    const name = a.name?.toLowerCase() ?? "";
+    const details = a.details?.toLowerCase() ?? "";
+    const state = a.state?.toLowerCase() ?? "";
+    if (name.includes(needle) || details.includes(needle) || state.includes(needle)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function resolveDiscordStatus(member: GuildMember): {
   status: DiscordMemberApiRow["status"];
   activity: string | null;
 } {
-  const playingWwm = isPlayingWhereWindsMeet(member);
-
-  const presenceStatusRaw = member.presence?.status;
   const discordActivity = primaryActivityLabel(member);
-
-  if (playingWwm) {
-    return {
-      status: "in-game",
-      activity: DISPLAY_PLAYING_WWM,
-    };
+  if (isPlayingWhereWindsMeet(member)) {
+    return { status: "in-game", activity: DISPLAY_PLAYING_WWM };
   }
-
-  /** Discord.js may surface `offline`/`invisible`/`undefined` interchangeably depending on caches. */
-  if (!presenceStatusRaw || presenceStatusRaw === "offline") {
-    return { status: "offline", activity: discordActivity };
+  const presenceStatus = member.presence?.status;
+  if (presenceStatus === "online") {
+    return { status: "online", activity: discordActivity };
   }
-
-  switch (presenceStatusRaw) {
-    case "online":
-      return { status: "online", activity: discordActivity };
-    case "idle":
-      return { status: "idle", activity: discordActivity };
-    case "dnd":
-      return { status: "dnd", activity: discordActivity };
-    default:
-      return { status: "offline", activity: discordActivity };
+  if (presenceStatus === "idle") {
+    return { status: "idle", activity: discordActivity };
   }
+  if (presenceStatus === "dnd") {
+    return { status: "dnd", activity: discordActivity };
+  }
+  return { status: "offline", activity: discordActivity };
 }
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-/** Parse Retry-After from Discord.js gateway / REST rate-limit messages. */
 function parseGatewayRetryAfterMs(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err);
-
-  const sec = /retry after\s+([\d.]+)\s*(?:seconds?)?/i.exec(msg);
-  if (sec) return Math.ceil(parseFloat(sec[1]) * 1000) + 400;
-
-  if (err && typeof err === "object" && "data" in err) {
-    const d = (err as { data?: { retry_after?: number } }).data;
-    if (d?.retry_after != null && typeof d.retry_after === "number") {
-      return Math.ceil(d.retry_after * 1000) + 400;
-    }
+  const m = msg.match(/Retry after ([0-9.]+)s/i);
+  if (m?.[1]) {
+    const sec = Number(m[1]);
+    if (Number.isFinite(sec) && sec > 0) return Math.ceil(sec * 1000);
   }
-
   return null;
 }
 
 function isLikelyDiscordRateLimit(err: unknown): boolean {
-  const t = String(err instanceof Error ? err.message : err).toLowerCase();
-  return t.includes("rate limit") || t.includes("opcode 8");
+  const msg = err instanceof Error ? err.message : String(err);
+  return /rate.?limit|429|too many requests|opcode 8/i.test(msg);
 }
 
-/**
- * Tracks how often we run `guild.members.fetch()` — that triggers gateway opcode 8
- * and Discord rate-limits it if invoked on every HTTP poll.
- */
-let lastSuccessfulMemberGatewaySyncMs = 0;
-let memberGatewaySyncPromise: Promise<void> | null = null;
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-async function fetchGuildMembersWithBackoff(guild: Guild): Promise<void> {
+async function ensureMemberListGatewaySyncInternal(guild: Guild): Promise<void> {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      /**
-       * `withPresences: false` lowers gateway pressure; presence & voice stay fresh
-       * via Guild Presences / Voice State events on cached members after the sync.
-       */
       await guild.members.fetch({ withPresences: false });
       await guild.roles.fetch().catch(() => {
         /** Non-fatal */
@@ -285,7 +267,7 @@ async function ensureMemberListGatewaySync(guild: Guild): Promise<void> {
 
   memberGatewaySyncPromise = (async () => {
     try {
-      await fetchGuildMembersWithBackoff(guild);
+      await ensureMemberListGatewaySyncInternal(guild);
       lastSuccessfulMemberGatewaySyncMs = Date.now();
     } finally {
       memberGatewaySyncPromise = null;
@@ -344,6 +326,24 @@ async function ensureClient(): Promise<Client> {
   return globalThis.__discordRosterLogin;
 }
 
+export async function getDiscordBotClient(): Promise<Client> {
+  return ensureClient();
+}
+
+export async function sendDiscordChannelMessage(
+  channelId: string,
+  content: string,
+): Promise<void> {
+  const client = await ensureClient();
+  const ch = await client.channels.fetch(channelId);
+  if (!ch?.isTextBased() || !ch.isSendable()) {
+    throw new Error(`Discord channel ${channelId} is not sendable or not found.`);
+  }
+  const text = content.trim().slice(0, 2000);
+  if (!text.length) throw new Error("Empty Discord message content.");
+  await ch.send({ content: text });
+}
+
 function guildMemberToRow(member: GuildMember): DiscordMemberApiRow | null {
   if (member.user?.bot) return null;
 
@@ -361,8 +361,8 @@ function guildMemberToRow(member: GuildMember): DiscordMemberApiRow | null {
 
   const discordName =
     member.displayName ??
-    member.user?.globalName ??
-    member.user?.username ??
+    member.user.globalName ??
+    member.user.username ??
     "Unknown";
   const { status, activity } = resolveDiscordStatus(member);
   const vc = member.voice.channel?.name ?? null;

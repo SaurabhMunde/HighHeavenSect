@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { notifyGalleryPendingApproval } from "@/lib/discord/run-discord-wwm-notices";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSiteUrl } from "@/lib/site";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   GALLERY_SUBMISSIONS_BUCKET,
@@ -205,6 +207,14 @@ export async function POST(request: Request) {
       "The uploaded file was rolled back from storage. Please retry.",
     );
   }
+
+  notifyGalleryPendingApproval({
+    displayName,
+    title: title ?? null,
+    adminGalleryUrl: `${getSiteUrl()}/admin/gallery`,
+  }).catch((e) => {
+    console.warn("[gallery/upload] Discord review notice skipped:", e);
+  });
 
   return NextResponse.json({
     ok: true,

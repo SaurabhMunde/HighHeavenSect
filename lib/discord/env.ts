@@ -58,3 +58,49 @@ export function getDiscordRosterSourceEnv(): {
     columnOrder,
   };
 }
+
+/** Private gallery-review thread + WWM Heads role for pending-upload pings. */
+export function getDiscordGalleryReviewEnv(): {
+  threadId: string | undefined;
+  headRoleId: string | undefined;
+} {
+  const tidy = (raw: string | undefined) => {
+    if (raw == null) return undefined;
+    let s = raw.replace(/^\uFEFF/, "").trim();
+    if (
+      (s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'"))
+    ) {
+      s = s.slice(1, -1).trim();
+    }
+    return s || undefined;
+  };
+
+  return {
+    threadId: tidy(process.env.DISCORD_GALLERY_REVIEW_THREAD_ID),
+    headRoleId: tidy(process.env.DISCORD_WWM_HEAD_ROLE_ID),
+  };
+}
+
+/** `#wwm-notice` style channel + optional WWM Member role id for `<@&…>` pings. */
+export function getDiscordWwmNoticeEnv(): {
+  noticeChannelId: string | undefined;
+  memberRoleId: string | undefined;
+} {
+  const tidy = (raw: string | undefined) => {
+    if (raw == null) return undefined;
+    let s = raw.replace(/^\uFEFF/, "").trim();
+    if (
+      (s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'"))
+    ) {
+      s = s.slice(1, -1).trim();
+    }
+    return s || undefined;
+  };
+
+  return {
+    noticeChannelId: tidy(process.env.DISCORD_WWM_NOTICE_CHANNEL_ID),
+    memberRoleId: tidy(process.env.DISCORD_WWM_MEMBER_ROLE_ID),
+  };
+}

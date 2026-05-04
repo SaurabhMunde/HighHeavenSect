@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { notifyGuildWarCreated } from "@/lib/discord/run-discord-wwm-notices";
 import { getSiteUrl } from "@/lib/site";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { purgeExpiredGuildWarEvents } from "@/lib/guild-war/purge-expired";
 import { getAdminApiUserId } from "@/lib/supabase/require-admin-api";
@@ -46,6 +48,17 @@ export async function POST(request: Request) {
   }
 
   const signupUrl = `${getSiteUrl()}/guild-war?war=${inserted.id}`;
+
+  try {
+    const admin = createAdminClient();
+    await notifyGuildWarCreated(admin, {
+      warId: inserted.id,
+      title,
+      signupUrl,
+    });
+  } catch (e) {
+    console.warn("[guild-war/create] Discord WWM notice skipped:", e);
+  }
 
   return NextResponse.json({
     ok: true,
