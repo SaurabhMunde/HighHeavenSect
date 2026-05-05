@@ -7,7 +7,11 @@ import {
 } from "discord.js";
 
 import { getDiscordEnv } from "@/lib/discord/env";
-import { getEffectiveMemberRows, lookupInGameName } from "@/lib/discord/ingame-map";
+import {
+  getEffectiveMemberRows,
+  lookupInGameName,
+  normalizeDiscordIdentityKey,
+} from "@/lib/discord/ingame-map";
 import { refreshInGameMapFromDiscordWithCache } from "@/lib/discord/roster-sync";
 import { matchesSiteLeadershipRoster } from "@/lib/discord/leadership-keys";
 import type {
@@ -420,6 +424,7 @@ export async function fetchDiscordRosterPayload(): Promise<DiscordRosterApiPaylo
 
 function memberMapperKeysNormalized(member: GuildMember): string[] {
   const raw = [
+    member.id,
     member.nickname,
     member.user.globalName,
     member.user.username,
@@ -429,7 +434,8 @@ function memberMapperKeysNormalized(member: GuildMember): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
   for (const value of raw) {
-    const k = value.trim().toLowerCase();
+    const k = normalizeDiscordIdentityKey(value);
+    if (!k.length) continue;
     if (!seen.has(k)) {
       seen.add(k);
       ordered.push(k);
@@ -440,7 +446,7 @@ function memberMapperKeysNormalized(member: GuildMember): string[] {
 
 function mapperKeysRegisteredForMemberRow(row: Member): string[] {
   const keys = [row.discord, ...(row.discordAliases ?? [])]
-    .map((s) => s.trim().toLowerCase())
+    .map((s) => normalizeDiscordIdentityKey(s))
     .filter(Boolean);
   return [...new Set(keys)];
 }

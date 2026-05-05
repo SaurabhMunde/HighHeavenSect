@@ -2,12 +2,27 @@ import type { GuildMember } from "discord.js";
 
 import { EMPTY_ROSTER, type Member } from "@/lib/members";
 
+/**
+ * Normalizes Discord identity keys so roster rows like "@Re:shanto" still match
+ * member names such as "Re:shanto" from display/global/username fields.
+ */
+export function normalizeDiscordIdentityKey(value: string): string {
+  const raw = value.trim();
+  if (!raw.length) return "";
+
+  // Discord user mention token: <@123...> or <@!123...>
+  const mention = raw.match(/^<@!?(\d+)>$/);
+  if (mention) return mention[1] ?? "";
+
+  return raw.replace(/^@+/, "").replace(/\s+/g, " ").toLowerCase();
+}
+
 /** Discord roster name (`discord` + `discordAliases`) → in-game tag. Keys compared case-insensitively. */
 function buildInsensitiveMap(rows: readonly Member[]): Map<string, string> {
   const m = new Map<string, string>();
 
   const add = (label: string, inGame: string) => {
-    const k = label.trim().toLowerCase();
+    const k = normalizeDiscordIdentityKey(label);
     if (k.length) m.set(k, inGame);
   };
 
@@ -42,6 +57,7 @@ export function getEffectiveMemberRows(): readonly Member[] {
  */
 export function lookupInGameName(member: GuildMember): string | null {
   const candidates = [
+    member.id,
     member.nickname,
     member.user.globalName,
     member.user.username,
@@ -50,7 +66,8 @@ export function lookupInGameName(member: GuildMember): string | null {
 
   const seen = new Set<string>();
   for (const raw of candidates) {
-    const key = raw.trim().toLowerCase();
+    const key = normalizeDiscordIdentityKey(raw);
+    if (!key.length) continue;
     if (seen.has(key)) continue;
     seen.add(key);
     const hit = ingameByDiscordKey.get(key);
